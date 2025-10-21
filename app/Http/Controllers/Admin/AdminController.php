@@ -20,6 +20,7 @@ use App\Models\UserRequest;
 use DateTime;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -1522,8 +1523,19 @@ class AdminController extends Controller
                 't_rec_D' => $t_rec_D,
                 't_rem_D' => $t_rem_D,
             ];
+            if ($request->ajax()) {
+                return response()->json($data);
+            }
             return view('admin.reports.general_monthly_report', ['data'=> $data]);
-        }catch(Exception $e){
+        } catch (ValidationException $e) {
+            if ($request->ajax()) {
+                return response()->json(['error' => $e->validator->errors()->first()], 422);
+            }
+            return back()->withErrors($e->validator)->withInput();
+        } catch(Exception $e){
+            if ($request->ajax()) {
+                return response()->json(['error' => $e->getMessage()], 500);
+            }
             return back()->with('error',$e->getMessage())->withInput();
         }
     }

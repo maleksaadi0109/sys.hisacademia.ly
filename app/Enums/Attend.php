@@ -9,8 +9,8 @@ enum Attend: string
 
     static function attendAr(): array{
         return [
-            'online' => 'اون لاين',
-            'physicist' => 'فيزيائي',
+            'online' => 'عن بعد',
+            'physicist' => 'حضوري',
         ];
     }
 }

@@ -1,9 +1,9 @@
-@php 
+@php
 use App\Enums\UserType;
 @endphp
 <x-app-layout>
     <x-slot name="header">
-        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="/public"><img class="header-logo" src="{{asset('logo.jpg')}}">الأكاديمية الإسبانية الليبية</a>
+        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="/"><img class="header-logo" src="{{asset('logo.jpg')}}">الأكاديمية الإسبانية الليبية</a>
 
         <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="عرض/إخفاء لوحة التنقل">
             <span class="navbar-toggler-icon"></span>
@@ -27,7 +27,7 @@ use App\Enums\UserType;
             <div class="position-sticky pt-3">
                 <ul class="nav flex-column">
                     <li class="nav-item">
-                        <a class="nav-link active" href="/public">
+                        <a class="nav-link active" href="/">
                             <svg width="24" height="24" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path fill-rule="evenodd" clip-rule="evenodd" d="M8 0L0 6V8H1V15H4V10H7V15H15V8H16V6L14 4.5V1H11V2.25L8 0ZM9 10H12V13H9V10Z" fill="#adb5bd"></path> </g></svg>
                             {{ __('لوحة التحكم') }}
                         </a>
@@ -168,5 +168,5 @@ use App\Enums\UserType;
     <x-slot name="title"><h1>{{__('أكاديمية متخصصة في تدريس اللغات والترجمة')}}</h1></x-slot>
 
     @yield('content')
-    
+    @yield('scripts')
 </x-app-layout>
