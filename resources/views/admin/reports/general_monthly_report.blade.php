@@ -1,3 +1,4 @@
+
 @extends('admin.dashboard')
 @section('content')
     <section>
@@ -252,3 +253,4 @@
         })();
     </script>
 @stop
+
