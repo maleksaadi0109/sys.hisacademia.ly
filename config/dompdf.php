@@ -20,7 +20,7 @@ return [
      */
     'convert_entities' => true,
 
-    'options' => [
+    'options' =>[
         /**
          * The location of the DOMPDF font directory
          *

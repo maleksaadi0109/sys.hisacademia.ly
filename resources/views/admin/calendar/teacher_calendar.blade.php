@@ -6,8 +6,8 @@
     </header>
     <div class="container">
         <div class="row table-responsive ">
-            @php 
-                use App\Enums\WeekDays; 
+            @php
+                use App\Enums\WeekDays;
             @endphp
 
             <div class="mt-5 col-lg-12">
@@ -311,7 +311,7 @@ $(document).ready(function () {
     function getWeekDates(weekOffset = 0) {
         const today = new Date();
         const currentDay = today.getDay();
-        
+
 
         const startOfWeek = new Date(today.setDate(today.getDate() - currentDay + (weekOffset * 7)));
         const endOfWeek = new Date(today.setDate(startOfWeek.getDate() + 6));
@@ -525,7 +525,7 @@ $(document).ready(function () {
                         }
                     });
                 });
-            },     
+            },
             error: function () {
             alert('فشل تحميل التوقيت');
             }

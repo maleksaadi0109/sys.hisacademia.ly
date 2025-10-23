@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\DataEntry;
 
 use App\Enums\EnumPermission;
+use App\Enums\UserStatus;
 use App\Enums\UserType;
 use App\Enums\WeekDays;
 use App\Http\Controllers\Controller;
@@ -34,7 +35,7 @@ class DataEntryController extends Controller
         public function addTeacher(){
             return view('data_entry.teacher.add_teacher');
         }
-    
+
         public function registerTeacher(Request $request){
             try{
                 $request->validate([
@@ -51,7 +52,7 @@ class DataEntryController extends Controller
                     'phone' => ['required', 'string', 'max:255'],
                     'pass_image' => ['required','mimes:png,jpeg'],
                 ]);
-    
+
                 $user = User::create([
                     'name' => $request->name,
                     'username' => $request->username,
@@ -60,10 +61,10 @@ class DataEntryController extends Controller
                     'user_type' => UserType::teacher,
                     'status' => $request->status,
                 ]);
-    
+
                 $pass_image_name = time().rand(10,99).'.'.$request->pass_image->getClientOriginalExtension();
                 $request->pass_image->storeAs('public/passport',$pass_image_name);
-    
+
                 Teacher::create([
                     'en_name' => $request->en_name,
                     'id_number' => $request->id_number,
@@ -74,13 +75,13 @@ class DataEntryController extends Controller
                     'pass_image' => $pass_image_name,
                     'user_id' => $user->id,
                 ]);
-    
+
                 return back()->with('success','تم إضافة المعلم بنجاح ');
                 }catch(Exception $e){
                     return back()->with('error',$e->getMessage())->withInput();
                 }
         }
-    
+
         public function teachers($orderBy, $sort){
             if($orderBy == 'null' || $sort == 'null'){
                 $teachers = Teacher::with('user')->paginate(8);
@@ -89,24 +90,24 @@ class DataEntryController extends Controller
             }
             return view('data_entry.teacher.teachers',['teachers' => $teachers]);
         }
-    
+
         public function editTeacher($id){
             if(!in_array(EnumPermission::modification,json_decode(Auth::user()->permission))){
                 return back()->with('error','ليس لديك صلاحية التعديل');
             }
             $teacher = Teacher::with('user')->findOrFail($id);
             $user = $teacher->user;
-    
+
             return view('data_entry.teacher.edit_teacher',['teacher' => $teacher, 'user' => $user]);
         }
-    
+
         public function updateTeacher(Request $request,$id){
             if(!in_array(EnumPermission::modification,json_decode(Auth::user()->permission))){
                 return back()->with('error','ليس لديك صلاحية التعديل');
             }
             $teacher = Teacher::with('user')->findOrFail($id);
             $user = $teacher->user;
-    
+
             try{
                 $request->validate([
                     'name' => ['required', 'string', 'max:255'],
@@ -120,7 +121,7 @@ class DataEntryController extends Controller
                     'academic_qualification' => ['required', 'string', 'max:255'],
                     'phone' => ['required', 'string', 'max:255'],
                 ]);
-    
+
                 if($request->password != null){
                     $request->validate([
                     'password' => ['required', 'confirmed', Rules\Password::defaults()],
@@ -131,7 +132,7 @@ class DataEntryController extends Controller
                 $user->username = $request->username;
                 $user->email = $request->email;
                 $user->status = $request->status;
-    
+
                 $teacher->en_name = $request->en_name;
                 $teacher->id_number = $request->id_number;
                 $teacher->nationality = $request->nationality;
@@ -139,7 +140,7 @@ class DataEntryController extends Controller
                 $teacher->academic_qualification = $request->academic_qualification;
                 $teacher->phone = $request->phone;
                 $teacher->nationality = $request->nationality;
-    
+
                 if($request->pass_image){
                     $image_name = time().rand(10,99).'.'.$request->pass_image->getClientOriginalExtension();
                     $request->pass_image->storeAs('public/passport',$image_name);
@@ -148,17 +149,184 @@ class DataEntryController extends Controller
                 $user->save();
                 $teacher->save();
                 return back()->with('success','تم تعديل بيانات المعلم بنجاح');
-    
+
             }catch(Exception $e){
                 return back()->with('error',$e->getMessage())->withInput();
             }
         }
-    
-        ## students ##
+    public function students(Request $request, $orderBy = 'id', $sort = 'asc')
+    {
+        $query = $request->input('search');
+
+        // تأكد من صحة sort
+        $sort = strtolower($sort);
+        if (!in_array($sort, ['asc', 'desc'])) {
+            $sort = 'asc';
+        }
+
+        // قائمة الأعمدة المسموح ترتيبها
+        $allowedColumns = ['id', 'en_name', 'id_number', 'nationality', 'phone']; // أعمدة جدول students
+        // لو فيه أعمدة من جدول user ممكن تضيفها بصيغة relation: 'user.name'
+        $allowedUserColumns = ['name', 'email'];
+
+        // افحص orderBy
+        if (!in_array($orderBy, $allowedColumns) && !in_array($orderBy, $allowedUserColumns)) {
+            $orderBy = 'id'; // افتراضي
+        }
+
+        $students = Student::with('user')
+            ->when($query, function ($q) use ($query) {
+                $q->whereHas('user', function ($userQuery) use ($query) {
+                    $userQuery->where('name', 'like', "%{$query}%");
+                });
+            });
+
+        // ترتيب حسب العمود المناسب
+        if (in_array($orderBy, $allowedUserColumns)) {
+            $students = $students->join('users', 'students.user_id', '=', 'users.id')
+                ->orderBy("users.$orderBy", $sort)
+                ->select('students.*'); // مهم عشان يرجع عمود students فقط
+        } else {
+            $students = $students->orderBy($orderBy, $sort);
+        }
+
+        $students = $students->paginate(10);
+
+        if ($request->ajax()) {
+            return view('data_entry.partials.students_table', compact('students'))->render();
+        }
+
+        return view('data_entry.students.students', compact('students'));
+    }
+
+    ## students ##
         public function addStudent(){
             return view('data_entry.students.add_student');
         }
-    
+       public function courseCalendar(){
+        $date = date('Y-m-d');
+        $courses = Course::with('diploma')->where('end_date', '>=', $date)->get();
+        return view('data_entry.calendar.calendar',['courses' => $courses]);
+       }
+    public function teacherCalendar(){
+        $teachers = User::where('status', '=', UserStatus::active)->where('user_type', '=', UserType::teacher)->get();
+        return view('data_entry.calendar.teacher_calendar',['teachers' => $teachers]);
+    }
+    public function ajaxGetCalendarTeacher($id){
+        $teacher = User::with('teacherCoursesNotEnd')->findOrFail($id);
+        $courses = $teacher->teacherCoursesNotEnd;
+        $teacher_name = $teacher->name;
+        $result= [];
+        foreach($courses as $course){
+            $days = [];
+            foreach(json_decode($course->days) as $value){
+                $days[$value] = WeekDays::weekDaysAr()[$value];
+            }
+            $name =  $course->name;
+            $startdate =  date("Y-m-d", strtotime($course->start_date));
+            $enddate =  date("Y-m-d", strtotime($course->end_date));
+            $starttime = $course->start_time;
+            $endtime = $course->end_time;
+            $result[] = ['name' => $name, 'teacher_name' => $teacher_name, 'days' => $days, 'startdate' => $startdate, 'enddate' => $enddate, 'starttime' => $starttime, 'endtime' => $endtime];
+        }
+        return $result;
+    }
+
+
+    public function ajaxGetCalendarCourse($id){
+        $course = Course::with('user')->findOrFail($id);
+        $teacher_name = $course->user ? $course->user->name : 'N/A';
+
+        // نرجع الأيام كـ object (associative array)
+        $days = [];
+        foreach(json_decode($course->days) as $value){
+            $days[$value] = WeekDays::weekDaysAr()[$value];  // object format: {"su": "الأحد", "mo": "الاثنين"}
+        }
+
+        $name = $course->name;
+        $startdate = date("Y-m-d", strtotime($course->start_date));
+        $enddate = date("Y-m-d", strtotime($course->end_date));
+        $starttime = $course->start_time;
+        $endtime = $course->end_time;
+
+        return response()->json([
+            'name' => $name,
+            'teacher_name' => $teacher_name,
+            'days' => $days,  // راح يرجع object
+            'startdate' => $startdate,
+            'enddate' => $enddate,
+            'starttime' => $starttime,
+            'endtime' => $endtime
+        ]);
+    }
+
+
+
+    public function student_calendar()
+       {
+        $students = User::where('status', '=', UserStatus::active)->where('user_type', '=', UserType::student)->get();
+        return view('data_entry.calendar.student_calendar',['students' => $students]);
+       }
+
+    public function ajaxGetCalendarStudent($id){
+        $student = User::with('studentCoursesNotEnd')->findOrFail($id);
+        $courses = $student->studentCoursesNotEnd;
+        $result = [];
+        foreach ($courses as $course){
+            $days = [];
+            $teacher_name = $course->user ? $course->user->name : 'N/A'; // Added null check
+            foreach (json_decode($course->days) as $value){
+                $days[$value] = WeekDays::weekDaysAr()[$value];
+            }
+            $result[] = [
+                'name' => $course->name,
+                'teacher_name' => $teacher_name,
+                'days' => $days,
+                'startdate' => date('Y-m-d', strtotime($course->start_date)), // Fixed: start_date not startdate
+                'enddate' => date('Y-m-d', strtotime($course->end_date)),     // Fixed: end_date not enddate
+                'starttime' => $course->start_time,   // Fixed: start_time not starttime
+                'endtime' => $course->end_time        // Fixed: end_time not endtime
+            ];
+        }
+        return $result;
+    }
+
+
+    public function teacher_calendar()
+       {
+       return view('data_entry.calendar.teacher_calendar');
+       }
+
+
+
+    public function diplomaCalendar()
+    {
+        $diplomas = Diploma::all();
+        return view('data_entry.calendar.diploma_calendar', ['diplomas' => $diplomas]);
+    }
+
+    public function ajaxGetCalendarDiploma($id)
+    {
+        $diploma = Diploma::with('diplomaCourses.user')->findOrFail($id);
+        $courses = $diploma->diplomaCourses;
+        $result = [];
+        foreach ($courses as $course) {
+            $days = [];
+            $teacher_name = $course->user ? $course->user->name : 'N/A';
+            foreach (json_decode($course->days) as $value) {
+                $days[$value] = WeekDays::weekDaysAr()[$value];
+            }
+            $name = $course->name;
+            $startdate = date("Y-m-d", strtotime($course->start_date));
+            $enddate = date("Y-m-d", strtotime($course->end_date));
+            $starttime = $course->start_time;
+            $endtime = $course->end_time;
+            $result[] = ['name' => $name, 'teacher_name' => $teacher_name, 'days' => $days, 'startdate' => $startdate, 'enddate' => $enddate, 'starttime' => $starttime, 'endtime' => $endtime];
+        }
+        return $result;
+    }
+
+
         public function registerStudent(Request $request) {
             try{
                 $request->validate([
@@ -175,7 +343,7 @@ class DataEntryController extends Controller
                     'phone' => ['required', 'string', 'max:255'],
                     'pass_image' => ['required','mimes:png,jpeg'],
                 ]);
-    
+
                 $user = User::create([
                     'name' => $request->name,
                     'username' => $request->username,
@@ -184,10 +352,10 @@ class DataEntryController extends Controller
                     'user_type' => UserType::student,
                     'status' => $request->status,
                 ]);
-    
+
                 $pass_image_name = time().rand(10,99).'.'.$request->pass_image->getClientOriginalExtension();
                 $request->pass_image->storeAs('public/passport',$pass_image_name);
-    
+
                 Student::create([
                     'en_name' => $request->en_name,
                     'id_number' => $request->id_number,
@@ -198,39 +366,22 @@ class DataEntryController extends Controller
                     'pass_image' => $pass_image_name,
                     'user_id' => $user->id,
                 ]);
-    
+
                 return back()->with('success','تم إضافة الطالب بنجاح ');
                 }catch(Exception $e){
                     return back()->with('error',$e->getMessage())->withInput();
                 }
         }
-    
-        public function students($orderBy, $sort){
-            if($orderBy == 'null' || $sort == 'null'){
-                $students = Student::with('user')->paginate(8);
-            }else{
-                $students = Student::with('user')->orderBy($orderBy, $sort)->paginate(8);
-            }
-            return view('data_entry.students.students',['students' => $students]);
-        }
-    
-        public function editStudent($id){
-            if(!in_array(EnumPermission::modification,json_decode(Auth::user()->permission))){
-                return back()->with('error','ليس لديك صلاحية التعديل');
-            }
-            $student = Student::with('user')->findOrFail($id);
-            $user = $student->user;
-    
-            return view('data_entry.students.edit_student',['student' => $student, 'user' => $user]);
-        }
-    
+
+
+
         public function updateStudent(Request $request,$id){
             if(!in_array(EnumPermission::modification,json_decode(Auth::user()->permission))){
                 return back()->with('error','ليس لديك صلاحية التعديل');
             }
             $student = Student::with('user')->findOrFail($id);
             $user = $student->user;
-    
+
             try{
                 $request->validate([
                     'name' => ['required', 'string', 'max:255'],
@@ -244,7 +395,7 @@ class DataEntryController extends Controller
                     'academic_qualification' => ['required', 'string', 'max:255'],
                     'phone' => ['required', 'string', 'max:255'],
                 ]);
-    
+
                 if($request->password != null){
                     $request->validate([
                     'password' => ['required', 'confirmed', Rules\Password::defaults()],
@@ -255,7 +406,7 @@ class DataEntryController extends Controller
                 $user->username = $request->username;
                 $user->email = $request->email;
                 $user->status = $request->status;
-    
+
                 $student->en_name = $request->en_name;
                 $student->id_number = $request->id_number;
                 $student->nationality = $request->nationality;
@@ -263,7 +414,7 @@ class DataEntryController extends Controller
                 $student->academic_qualification = $request->academic_qualification;
                 $student->phone = $request->phone;
                 $student->nationality = $request->nationality;
-    
+
                 if($request->pass_image){
                     $image_name = time().rand(10,99).'.'.$request->pass_image->getClientOriginalExtension();
                     $request->pass_image->storeAs('public/passport',$image_name);
@@ -272,22 +423,22 @@ class DataEntryController extends Controller
                 $user->save();
                 $student->save();
                 return back()->with('success','تم تعديل بيانات الطالب بنجاح');
-    
+
             }catch(Exception $e){
                 return back()->with('error',$e->getMessage())->withInput();
             }
         }
-    
+
         public function editStudentData($id){
             if(!in_array(EnumPermission::modification,json_decode(Auth::user()->permission))){
                 return back()->with('error','ليس لديك صلاحية التعديل');
             }
             $student = Student::with('dataStudent')->findOrFail($id);
             $dataStudent = $student->dataStudent;
-    
+
             return view('data_entry.students.edit_data_student',['student' => $student, 'dataStudent' => $dataStudent]);
         }
-    
+
         public function updateDataStudent(Request $request,$id){
             if(!in_array(EnumPermission::modification,json_decode(Auth::user()->permission))){
                 return back()->with('error','ليس لديك صلاحية التعديل');
@@ -295,7 +446,7 @@ class DataEntryController extends Controller
             try{
                 $student = Student::with('dataStudent')->findOrFail($id);
                 $dataStudent = $student->dataStudent;
-    
+
                 if($dataStudent == null){
                     $signature_name = null;
                     if($request->signature){
@@ -334,17 +485,17 @@ class DataEntryController extends Controller
                     $dataStudent->cultural_activity = $request->cultural_activity;
                     $dataStudent->payment_method = $request->payment_method;
                     $dataStudent->student_id = $id;
-    
+
                     $dataStudent->save();
                     return back()->with('success','تم تعديل بيانات الدراسة بنجاح');
-    
+
                 }
             }catch(Exception $e){
                 return back()->with('error',$e->getMessage())->withInput();
             }
-    
+
         }
-    
+
         public function studentDestroy($id){
             $student = Student::findOrFail($id);
             $user_id = $student->user_id;
@@ -356,7 +507,7 @@ class DataEntryController extends Controller
             DB::delete('DELETE FROM users WHERE id = '.$user_id);
             return back();
         }
-    
+
         ## Courses ##
         public function addCourse(){
             $teachers = Teacher::whereHas('user', function ($query) {
@@ -364,7 +515,7 @@ class DataEntryController extends Controller
             })->get();
             return view('data_entry.courses.add_course',['teachers' => $teachers]);
         }
-    
+
         public function buyCourse(){
             $date = date('Y-m-d');
             $courses = Course::where('end_date', '>=', $date)->where('diploma_id', '=', null)->get();
@@ -373,7 +524,7 @@ class DataEntryController extends Controller
             })->get();
             return view('data_entry.courses.buy_course',['courses' => $courses, 'students' => $students]);
         }
-    
+
         public function ajaxGetTimeByCourse($id){
             $course = Course::findOrFail($id);
             $datacourses = [];
@@ -389,57 +540,36 @@ class DataEntryController extends Controller
             $result = ['datacourses' => $datacourses];
             return $result;
         }
-    
-        public function ajaxGetTimeByStudent($id){
-            $student = Student::findOrFail($id);
-            $courses = $student->user->studentCourses;
-            if($courses){
-                $datacourses = [];
-                foreach($courses as $course){
-                    if($course->end_date > date('Y-m-d')){
-                        foreach(json_decode($course->days) as $value){
-                            $days[] = WeekDays::weekDaysAr()[$value];
-                        }
-                        $name =  $course->name;
-                        $startdate =  date("Y:m:d", strtotime($course->start_date));
-                        $enddate =  date("Y:m:d", strtotime($course->end_date));
-                        $starttime = date("h:i A", strtotime($course->start_time));
-                        $endtime = date("h:i A", strtotime($course->end_time));
-                        $datacourses[] = ['name' => $name, 'days' => $days, 'startdate' => $startdate, 'enddate' => $enddate, 'starttime' => $starttime, 'endtime' => $endtime];
-                        $days= [];
-                    }
-                }
-            }
-            $result = ['datacourses' => $datacourses];
-            return $result;
-        }
-    
+
+
+
+
         public function enrollCourse(Request $request){
             try{
                 $request->validate([
                     'course_id' => ['required'],
                     'student_id' => ['required'],
                 ]);
-    
+
                 $course = Course::findOrFail($request->course_id);
                 $student = Student::findOrFail($request->student_id);
                 $courses = $student->user->studentCourses;
-    
+
                 if($course->price >= $request->value_rec && $request->value_rec >= 0){
-    
+
                     $course_start_time = DateTime::createFromFormat('H:i:s', $course->start_time);
                     $course_start_date = DateTime::createFromFormat('Y-m-d', $course->start_date);
                     $days = json_decode($course->days);
-    
+
                     foreach($courses as $item){
                         $item_start_time = DateTime::createFromFormat('H:i:s', $item->start_time);
                         $item_end_time = DateTime::createFromFormat('H:i:s', $item->end_time);
                         $item_start_date = DateTime::createFromFormat('Y-m-d', $item->start_date);
                         $item_end_date = DateTime::createFromFormat('Y-m-d', $item->end_date);
-    
+
                         if($item->id == $course->id){
                             return back()->with('error','مسجل في هذا الكورس سابقاً')->withInput();
-    
+
                         }if($course_start_time >= $item_start_time && $course_start_time <= $item_end_time){
                             foreach(json_decode($item->days) as $value){
                                 if(in_array($value,$days)){
@@ -450,9 +580,9 @@ class DataEntryController extends Controller
                             }
                         }
                     }
-    
+
                     $student->user->studentCourses()->syncWithoutDetaching($course->id);
-    
+
                     $value_rem = $course->price - $request->value_rec;
                     Revenue::create([
                         'course_id' => $course->id,
@@ -463,18 +593,18 @@ class DataEntryController extends Controller
                         'value_rec' => $request->value_rec,
                         'value_rem' => $value_rem,
                     ]);
-    
+
                 }else{
                     return back()->with('error','القيمة المدفوعة اكبر من سعر الكورس او خاطئة')->withInput();
                 }
-            
+
                 return back()->with('success','تم تسجيل هذا الكورس للطالب')->withInput();
-    
+
             }catch(Exception $e){
                 return back()->with('error',$e->getMessage())->withInput();
             }
         }
-    
+
         public function registerCourse(Request $request){
             try{
                 $request->validate([
@@ -494,7 +624,7 @@ class DataEntryController extends Controller
                     'currency' => ['required','in:USD,D'],
                     'teacher_id' => ['required'],
                 ]);
-    
+
                 Course::create([
                     'name' => $request->name,
                     'section' => $request->section,
@@ -517,7 +647,7 @@ class DataEntryController extends Controller
                 return back()->with('error',$e->getMessage())->withInput();
             }
         }
-    
+
         public function courses($orderBy, $sort){
             if($orderBy == 'null' || $sort == 'null'){
                 $courses = Course::with('user')->where('diploma_id', '=', null)->paginate(8);
@@ -526,7 +656,7 @@ class DataEntryController extends Controller
             }
             return view('data_entry.courses.courses',['courses' => $courses]);
         }
-    
+
         public function editCourse($id){
             if(!in_array(EnumPermission::modification,json_decode(Auth::user()->permission))){
                 return back()->with('error','ليس لديك صلاحية التعديل');
@@ -537,7 +667,7 @@ class DataEntryController extends Controller
             $course = Course::with('user')->findOrFail($id);
             return view('data_entry.courses.edit_course',['course' => $course, 'teachers' => $teachers]);
         }
-    
+
         public function updateCourse(Request $request, $id){
             if(!in_array(EnumPermission::modification,json_decode(Auth::user()->permission))){
                 return back()->with('error','ليس لديك صلاحية التعديل');
@@ -561,7 +691,7 @@ class DataEntryController extends Controller
                     'currency' => ['required','in:USD,D'],
                     'teacher_id' => ['required'],
                 ]);
-    
+
                 $course->name = $request->name;
                 $course->section = $request->section;
                 $course->start_date = $request->start_date;
@@ -577,9 +707,9 @@ class DataEntryController extends Controller
                 $course->price = $request->price;
                 $course->currency = $request->currency;
                 $course->teacher_id = $request->teacher_id;
-    
+
                 $course->save();
-    
+
                 return back()->with('success','تم تعديل الكورس بنجاح ');
             }catch(Exception $e){
                 return back()->with('error',$e->getMessage())->withInput();
@@ -608,7 +738,7 @@ class DataEntryController extends Controller
                 'diploma_name' => ['required', 'string', 'max:255'],
                 'number_course' => ['required', 'numeric'],
             ]);
-            
+
             $diploma = Diploma::create([
                 'name' => $request->diploma_name,
                 'number_course' => $request->number_course,
@@ -636,7 +766,7 @@ class DataEntryController extends Controller
                     'teacher_id' => 'teacher_id'.$i,
                 ];
 
-                
+
                 $request->validate([
                     $course_request_array[$i]['name'] => ['required', 'string', 'max:255'],
                     $course_request_array[$i]['section'] => ['required', 'string', 'max:255'],
@@ -691,7 +821,7 @@ class DataEntryController extends Controller
         if($request->diploma_id){
             $diplomaCourse = Course::where('diploma_id', '=', $request->diploma_id)->get();
         }
-        
+
         return view('data_entry.courses.diploma_course', ['allDiploma' => $allDiploma, 'diplomaCourse' => $diplomaCourse]);
     }
 
@@ -727,7 +857,7 @@ class DataEntryController extends Controller
 
             $old_revenues = DB::table('revenue')->select('diploma_id','user_id', 'value_rec')
             ->where('diploma_id','=',$diploma->id)
-            ->groupBy('user_id')->get();            
+            ->groupBy('user_id')->get();
 
             Revenue::where('diploma_id','=',$diploma->id)->delete();
             $diploma->diplomaCourses()->delete();
@@ -917,7 +1047,7 @@ class DataEntryController extends Controller
             return back()->with('error',$e->getMessage())->withInput();
         }
     }
-    
+
     public function diplomaDestroy($id){
         $diploma = Diploma::findOrFail($id);
         DB::delete('DELETE FROM user_diploma WHERE diploma_id = '.$id);
@@ -1061,7 +1191,7 @@ class DataEntryController extends Controller
         $customers = Customer::all();
         return view('data_entry.translation.edit_translation_deal',['translation_deal' => $translation_deal, 'customers' => $customers]);
     }
-    
+
     public function updateTranslationDeal(Request $request,$id){
         if(!in_array(EnumPermission::modification,json_decode(Auth::user()->permission))){
             return back()->with('error','ليس لديك صلاحية التعديل');
@@ -1102,7 +1232,7 @@ class DataEntryController extends Controller
             $translation_deal->due_date = $request->due_date;
 
             $translation_deal->save();
-            
+
             return back()->with('success','تم تعديل بيانات المعاملة بنجاح');
         }catch(Exception $e){
             return back()->with('error',$e->getMessage())->withInput();
@@ -1142,7 +1272,7 @@ class DataEntryController extends Controller
             ]);
             $revenues = Revenue::where('type' , '=', 'course')->where('date_of_rec','>=',$request->from_date)->where('date_of_rec','<=',$request->to_date)->get();
             $translationDeals = TranslationDel::where('date_of_receipt','>=',$request->from_date)->where('due_date','<=',$request->to_date)->get();
-            
+
             $t_course_price_usd = 0;
             $t_course_rec_usd = 0;
             $t_course_rem_usd = 0;
@@ -1162,7 +1292,7 @@ class DataEntryController extends Controller
             $t_price_usd = 0;
             $t_rec_usd = 0;
             $t_rem_usd = 0;
-            
+
             $t_price_D = 0;
             $t_rec_D = 0;
             $t_rem_D = 0;
@@ -1176,8 +1306,8 @@ class DataEntryController extends Controller
                     $t_course_price_D += $value->value;
                     $t_course_rec_D += $value->value_rec;
                     $t_course_rem_D += $value->value_rem;
-                } 
-                $count_course += 1;         
+                }
+                $count_course += 1;
             }
 
             foreach($translationDeals as $value){
@@ -1189,14 +1319,14 @@ class DataEntryController extends Controller
                     $t_translation_price_D += $value->price;
                     $t_translation_rec_D += $value->received;
                     $t_translation_rem_D += $value->remaining;
-                } 
-                $count_translation += 1; 
+                }
+                $count_translation += 1;
             }
 
             $t_price_usd = $t_course_price_usd + $t_translation_price_usd;
             $t_rec_usd = $t_course_rec_usd + $t_translation_rec_usd;
             $t_rem_usd = $t_course_rem_usd + $t_translation_rem_usd;
-            
+
             $t_price_D = $t_course_price_D + $t_translation_price_D;
             $t_rec_D = $t_course_rec_D + $t_translation_rec_D;
             $t_rem_D = $t_course_rem_D + $t_translation_rem_D;

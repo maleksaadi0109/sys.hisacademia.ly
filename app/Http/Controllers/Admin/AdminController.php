@@ -1297,7 +1297,31 @@ class AdminController extends Controller
         $courses = Course::with('diploma')->where('end_date', '>=', $date)->get();
         return view('admin.calendar.calendar',['courses' => $courses]);
     }
+    public function ajaxGetCalendarByCourse($id){
+        $course = Course::with('user')->findOrFail($id);
+        $days = [];
+        $teacher_name = $course->user->name;
 
+        foreach(json_decode($course->days) as $value){
+            $days[$value] = WeekDays::weekDaysAr()[$value];
+        }
+
+        $name = $course->name;
+        $startdate = date("Y-m-d", strtotime($course->start_date));
+        $enddate = date("Y-m-d", strtotime($course->end_date));
+        $starttime = $course->start_time;
+        $endtime = $course->end_time;
+
+        return [
+            'name' => $name,
+            'teacher_name' => $teacher_name,
+            'days' => $days,
+            'startdate' => $startdate,
+            'enddate' => $enddate,
+            'starttime' => $starttime,
+            'endtime' => $endtime
+        ];
+    }
     public function ajaxGetCalendarCourse($id){
         $course = Course::with('user')->findOrFail($id);
         $teacher_name = $course->user->name;
@@ -1311,7 +1335,7 @@ class AdminController extends Controller
         $starttime = $course->start_time;
         $endtime = $course->end_time;
         $result = ['name' => $name, 'teacher_name' => $teacher_name, 'days' => $days, 'startdate' => $startdate, 'enddate' => $enddate, 'starttime' => $starttime, 'endtime' => $endtime];
-        return $result;
+        return response()->json($result);
     }
 
     public function teacherCalendar(){
@@ -1585,11 +1609,11 @@ class AdminController extends Controller
 
             }
 
-    
+
 
         }
 
-    
+
 
         public function applyCoupon(Request $request)
 
@@ -1603,7 +1627,7 @@ class AdminController extends Controller
 
             ]);
 
-    
+
 
             if ($request->coupon_code === 'SAVE10') {
 
@@ -1615,13 +1639,13 @@ class AdminController extends Controller
 
             }
 
-    
+
 
             return response()->json(['success' => false, 'message' => 'كود الخصم غير صالح']);
 
         }
 
-    
+
 
         public function applyDiplomaCoupon(Request $request)
 
@@ -1635,7 +1659,7 @@ class AdminController extends Controller
 
             ]);
 
-    
+
 
             if ($request->coupon_code === 'SAVE10') {
 
@@ -1647,14 +1671,14 @@ class AdminController extends Controller
 
             }
 
-    
+
 
             return response()->json(['success' => false, 'message' => 'كود الخصم غير صالح']);
 
         }
 
-    
+
 
     }
 
-    
+

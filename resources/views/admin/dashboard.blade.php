@@ -12,7 +12,7 @@ use App\Enums\UserType;
 
         <div class="navbar-nav">
             <div class="nav-item text-nowrap d-flex">
-                <a class="px-3 username-nav"><i class="fa fa-user"> </i>{{ Auth::user()->name . ' (' . UserType::userTypeAr()[Auth::user()->user_type] .')'}}</a>
+                <a class="px-3 username-nav"><i class="fa fa-user"> </i>{{ Auth::user()->name}}</a>
                 <form method="POST" action="{{ route('logout') }}">
                         @csrf
                     <a class="nav-link px-3" href="{{route('logout')}}" onclick="event.preventDefault(); this.closest('form').submit();">

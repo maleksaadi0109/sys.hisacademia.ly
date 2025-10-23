@@ -38,7 +38,7 @@
                         @endif
                     </div>
                 </div>
-    
+
                 <div class="mt-5 col-lg-6">
                     <div class="input-group mb-3">
                         <label class="input-group-text" >الكورس</label>
@@ -66,7 +66,7 @@
         var teacher_id = $(this).val();
         callAjaxForCourse(teacher_id);
     });
-    
+
     function callAjaxForCourse(teacher_id) {
         $.ajax({
             url        :window.location.origin +'/admin/course_byteacher/'+teacher_id,
@@ -81,7 +81,7 @@
                     option = option + temp;
                 });
                 $('#course_select').html(option);
-            },     
+            },
             error: function () {
             alert('فشل تحميل الكورسات');
             }

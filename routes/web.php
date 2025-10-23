@@ -123,6 +123,7 @@ Route::middleware(['auth', 'verified', 'role:admin','log.requests'])->group(func
     Route::get('/admin/calendar_bycourse/{id}', [AdminController::class, 'ajaxGetCalendarCourse'])->name('ajax.ajaxGetCalendarByCourse');
     Route::get('/admin/calendar_byteacher/{id}', [AdminController::class, 'ajaxGetCalendarTeacher'])->name('ajax.ajaxGetCalendarByTeacher');
     Route::get('/admin/calendar_bystudent/{id}', [AdminController::class, 'ajaxGetCalendarStudent'])->name('ajax.ajaxGetCalendarByStudent');
+    Route::get('/admin/calendar_bycourse/{id}', [AdminController::class, 'ajaxGetCalendarByCourse'])->name('admin.calendar_bycourse');
 
     ### reports ###
     Route::get('/admin/generate_general_monthly_report', [AdminController::class, 'generalMonthlyReport'])->name('general.monthly.report');
@@ -159,6 +160,20 @@ Route::middleware(['auth', 'verified', 'role:data_entry','log.requests'])->group
     Route::get('/data_entry/edit_student_data/{id}', [DataEntryController::class, 'editStudentData'])->name('data_entry.edit.studentData');
     Route::patch('/data_entry/update_student_data/{id}', [DataEntryController::class, 'updateDataStudent'])->name('data_entry.update.dataStudent');
     Route::delete('/data_entry/student/{id}', [DataEntryController::class, 'studentDestroy'])->name('data_entry.student.destroy');
+
+    ### Calendar ###
+### Calendar ###
+    Route::get('/data_entry/student_calendar', [DataEntryController::class, 'student_calendar'])->name('data_entry.student.calendar');
+    Route::get('/data_entry/calendar_bystudent/{id}', [DataEntryController::class, 'ajaxGetCalendarStudent'])->name('data_entry.ajax.ajaxGetCalendarByStudent');
+
+    Route::get('/data_entry/course_calendar', [DataEntryController::class, 'courseCalendar'])->name('data_entry.course.calendar');
+    Route::get('/data_entry/calendar_bycourse/{id}', [DataEntryController::class, 'ajaxGetCalendarCourse'])->name('data_entry.calendar_bycourse');
+
+    Route::get('/data_entry/teacher_calendar', [DataEntryController::class, 'teacherCalendar'])->name('data_entry.teacher.calendar');
+    Route::get('/data_entry/calendar_byteacher/{id}', [DataEntryController::class, 'ajaxGetCalendarTeacher'])->name('data_entry.calendar_byteacher');
+
+    Route::get('/data_entry/diploma_calendar', [DataEntryController::class, 'diplomaCalendar'])->name('data_entry.diploma.calendar');
+    Route::get('/data_entry/calendar_bydiploma/{id}', [DataEntryController::class, 'ajaxGetCalendarDiploma'])->name('data_entry.ajax.ajaxGetCalendarByDiploma');
 
     ### courses ###
     Route::get('/data_entry/add_course', [DataEntryController::class, 'addCourse'])->name('data_entry.add.course');

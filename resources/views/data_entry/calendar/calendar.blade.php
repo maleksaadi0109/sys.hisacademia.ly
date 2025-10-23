@@ -1,4 +1,4 @@
-@extends('admin.dashboard')
+@extends('data_entry.dashboard')
 @section('content')
     <section>
         <header>
@@ -472,13 +472,21 @@
             });
 
             function callAjaxForCourse(course_id) {
+                console.log('=== Starting AJAX Call ===');
+                console.log('Course ID:', course_id);
+                console.log('URL:', window.location.origin +'/data_entry/calendar_bycourse/'+course_id);
+
                 $.ajax({
-                    url        :window.location.origin +'/admin/calendar_bycourse/'+course_id,
+                    url        :window.location.origin +'/data_entry/calendar_bycourse/'+course_id,
                     type       :'GET',
                     dataType   :'JSON',
                     success    :function(result){
+                        console.log('=== AJAX Success ===');
+                        console.log('Full Result:', result);
+
                         var div = ``;
                         $('.td_course').html(div);
+
                         var data_startdate = result['startdate'];
                         var data_enddate = result['enddate'];
                         var data_starttime = result['starttime'].slice(0, 2);
@@ -488,50 +496,103 @@
                         var data_name = result['name'];
                         var data_teacher_name = result['teacher_name'];
 
-                        // استخراج الأيام من النتيجة
+                        console.log('Course Details:');
+                        console.log('- Name:', data_name);
+                        console.log('- Teacher:', data_teacher_name);
+                        console.log('- Date Range:', data_startdate, 'to', data_enddate);
+                        console.log('- Time:', data_starttime + ':' + data_startmi, 'to', data_endtime + ':' + data_endmi);
+                        console.log('- Days Object:', result['days']);
+
+                        // استخراج الأيام من Object
                         var days = Object.keys(result['days']).map((key) => [key, result['days'][key]]);
+                        console.log('Days Array:', days);
 
-                        days.forEach(function(currentValue, index)  {
-                            var dayKey = currentValue[0]; // هذا هو 'su', 'mo', إلخ
+                        days.forEach(function(dayKey, index)  {
+                            var dayCode = dayKey[0]; // 'su', 'mo', etc.
+                            var dayName = dayKey[1]; // 'الأحد', 'الإثنين', etc.
 
-                            if(new Date($("#"+dayKey).html()).toLocaleDateString('en-CA') >= data_startdate &&
-                                new Date($("#"+dayKey).html()).toLocaleDateString('en-CA') <= data_enddate){
+                            console.log('--- Processing Day', index, '---');
+                            console.log('Day Code:', dayCode, '| Day Name:', dayName);
+
+                            var cellDate = $("#"+dayCode).html();
+                            console.log('Cell #' + dayCode + ' contains:', cellDate);
+
+                            if(!cellDate) {
+                                console.warn('WARNING: Cell #' + dayCode + ' is empty or not found!');
+                                return;
+                            }
+
+                            var currentDate = new Date(cellDate).toLocaleDateString('en-CA');
+                            console.log('Parsed Date:', currentDate);
+                            console.log('Checking if', currentDate, '>=', data_startdate, '&&', currentDate, '<=', data_enddate);
+
+                            if(currentDate >= data_startdate && currentDate <= data_enddate){
+                                console.log('✓ Date is within range! Creating course block...');
+
                                 var endhour = data_endtime - data_starttime;
-                                var top = 0 + parseInt((data_startmi * 100)/ 60);
-                                var height = (endhour * 100) + parseInt((data_endmi * 100)/ 60) - top;
+                                var top = 0 + parseInt((data_startmi * 100) / 60);
+                                var height = (endhour * 100) + parseInt((data_endmi * 100) / 60) - top;
+
+                                console.log('Calculations:');
+                                console.log('- End Hour:', endhour);
+                                console.log('- Top Position:', top + '%');
+                                console.log('- Height:', height + '%');
 
                                 var div = `
-                        <div style="
-                            position: absolute;
-                            width: 100%;
-                            background-color: #e09707;
-                            color: white;
-                            font-weight: bolder;
-                            text-align: right;
-                            height: `+ height +`%;
-                            top: `+top+`%;
-                            right: 0;
-                            z-index: 2;
-                            opacity: 100%;
-                            border: 1px solid aliceblue;
-                            border-radius: 8px;
-                            padding: 5px;
-                            font-size: 13px;
-                            ">
-                            <span style="color: black">اسم الكورس: </span>`+ data_name +`
-                            <br><span style="color: black">اسم المدرس: </span>`+ data_teacher_name +`
-                        </div>
-                        `;
-                                $('#'+dayKey+'-'+data_starttime).html(div);
+                            <div style="
+                                position: absolute;
+                                width: 100%;
+                                background-color: #e09707;
+                                color: white;
+                                font-weight: bolder;
+                                text-align: right;
+                                height: `+ height +`%;
+                                top: `+ top +`%;
+                                right: 0;
+                                z-index: 2;
+                                opacity: 100%;
+                                border: 1px solid aliceblue;
+                                border-radius: 8px;
+                                padding: 5px;
+                                font-size: 13px;
+                                ">
+                                <span style="color: black">اسم الكورس: </span>`+ data_name +`
+                                <br><span style="color: black">اسم المدرس: </span>`+ data_teacher_name +`
+                            </div>
+                            `;
+
+                                var targetCell = '#' + dayCode + '-' + data_starttime;
+                                console.log('Target Cell:', targetCell);
+
+                                $(targetCell).html(div);
+                                console.log('✓ Course block added successfully!');
+                            } else {
+                                console.log('✗ Date is outside range, skipping');
                             }
                         });
+
+                        console.log('=== AJAX Processing Complete ===');
                     },
-                    error: function () {
-                        alert('فشل تحميل التوقيت');
+                    error: function (xhr, status, error) {
+                        console.error('=== AJAX Error ===');
+                        console.error('Status:', status);
+                        console.error('Error:', error);
+                        console.error('Status Code:', xhr.status);
+                        console.error('Response Text:', xhr.responseText);
+
+                        try {
+                            var errorJson = JSON.parse(xhr.responseText);
+                            console.error('Parsed Error:', errorJson);
+                        } catch(e) {
+                            console.error('Could not parse error response');
+                        }
+
+                        alert('فشل تحميل التوقيت - شوف الـ Console للتفاصيل (اضغط F12)');
                     }
                 });
             }
 
         });
     </script>
+
 @stop
