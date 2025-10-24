@@ -53,7 +53,7 @@ use App\Enums\EnumPermission;
                         </a>
                         <div class="collapse div-collapse" id="collapse-1" style="">
                             <ul class="nav flex-column ul-collapse">
-                                <li class="li-collapse"><a href="{{route("data_entry.add.teacher")}}" class="link-white d-inline-flex text-decoration-none rounded">إضافة معلم</a></li>
+
                                 <li class="li-collapse"><a href="{{route("data_entry.teachers",['orderBy' => 'null','sort' => 'null'])}}" class="link-white d-inline-flex text-decoration-none rounded">إدارة المعلمين</a></li>
                             </ul>
                         </div>
@@ -65,7 +65,6 @@ use App\Enums\EnumPermission;
                         </a>
                         <div class="collapse div-collapse" id="collapse-1" style="">
                             <ul class="nav flex-column ul-collapse">
-                                <li class="li-collapse"><a href="{{route("data_entry.add.course")}}" class="link-white d-inline-flex text-decoration-none rounded">إضافة كورس</a></li>
                                 <li class="li-collapse"><a href="{{route('data_entry.courses',['orderBy' => 'null','sort' => 'null'])}}" class="link-white d-inline-flex text-decoration-none rounded">إدارة الكورسات</a></li>
                                 <li class="li-collapse"><a href="{{route("data_entry.buy.course")}}" class="link-white d-inline-flex text-decoration-none rounded">حجز كورس للطالب</a></li>
                             </ul>
@@ -78,7 +77,7 @@ use App\Enums\EnumPermission;
                         </a>
                         <div class="collapse div-collapse" id="collapse-1" style="">
                             <ul class="nav flex-column ul-collapse">
-                                <li class="li-collapse"><a href="{{route("data_entry.add.diploma")}}" class="link-white d-inline-flex text-decoration-none rounded">إضافة دبلوم</a></li>
+
                                 <li class="li-collapse"><a href="{{route("data_entry.diploma.course")}}" class="link-white d-inline-flex text-decoration-none rounded">إدارة الدبلومات</a></li>
                                 <li class="li-collapse"><a href="{{route("data_entry.buy.diploma")}}" class="link-white d-inline-flex text-decoration-none rounded">حجز دبلوم للطالب</a></li>
                             </ul>
