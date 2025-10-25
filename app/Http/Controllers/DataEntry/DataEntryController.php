@@ -261,6 +261,26 @@ class DataEntryController extends Controller
         return view('data_entry.calendar.student_calendar',['students' => $students]);
     }
 
+    public function ajaxGetCalendarStudent($id){
+        $student = User::with('studentCoursesNotEnd')->findOrFail($id);
+        $courses = $student->studentCoursesNotEnd;
+        $result= [];
+        foreach($courses as $course){
+            $days = [];
+            $teacher_name = $course->user ? $course->user->name : 'N/A';
+            foreach(json_decode($course->days) as $value){
+                $days[$value] = WeekDays::weekDaysAr()[$value];
+            }
+            $name =  $course->name;
+            $startdate =  date("Y-m-d", strtotime($course->start_date));
+            $enddate =  date("Y-m-d", strtotime($course->end_date));
+            $starttime = $course->start_time;
+            $endtime = $course->end_time;
+            $result[] = ['name' => $name, 'teacher_name' => $teacher_name, 'days' => $days, 'startdate' => $startdate, 'enddate' => $enddate, 'starttime' => $starttime, 'endtime' => $endtime];
+        }
+        return $result;
+    }
+
     public function ajaxGetTimeByStudent($id){
         $student = Student::find($id);
         if (!$student) {
@@ -1089,7 +1109,7 @@ class DataEntryController extends Controller
 
             foreach($student->user->studentDiploma as $ditem){
                 if($ditem->id == $diploma->id){
-                    return back()->with('error','مسجل في هذا الدبلوم سابقاً')->withInput();
+                    return redirect()->route('data_entry.buy.diploma')->with('error','مسجل في هذا الدبلوم سابقاً')->withInput();
 
                 }
             }
@@ -1108,13 +1128,13 @@ class DataEntryController extends Controller
                         $item_end_date = DateTime::createFromFormat('Y-m-d', $item->end_date);
 
                         if($item->id == $course->id){
-                            return back()->with('error','مسجل في احد الكورسات الخاصة بهذا الدبلوم سابقاً')->withInput();
+                            return redirect()->route('data_entry.buy.diploma')->with('error','مسجل في احد الكورسات الخاصة بهذا الدبلوم سابقاً')->withInput();
 
                         }if($course_start_time >= $item_start_time && $course_start_time <= $item_end_time){
                             foreach(json_decode($item->days) as $value){
                                 if(in_array($value,$days)){
                                     if($course_start_date >= $item_start_date && $course_start_date <= $item_end_date){
-                                        return back()->with('error','توقيت احد الكورسات ضمن الدبلوم يتعارض مع برنامج الطالب')->withInput();
+                                        return redirect()->route('data_entry.buy.diploma')->with('error','توقيت احد الكورسات ضمن الدبلوم يتعارض مع برنامج الطالب')->withInput();
                                     }
                                 }
                             }
@@ -1136,14 +1156,14 @@ class DataEntryController extends Controller
                         'diploma_id' => $diploma->id,
                     ]);
                 }else{
-                    return back()->with('error','القيمة المدفوعة اكبر من سعر الدبلوم او خاطئة')->withInput();
+                    return redirect()->route('data_entry.buy.diploma')->with('error','القيمة المدفوعة اكبر من سعر الدبلوم او خاطئة')->withInput();
                 }
             }
             $student->user->studentDiploma()->syncWithoutDetaching($diploma->id);
-            return back()->with('success','تم تسجيل هذا الدبلوم للطالب')->withInput();
+            return redirect()->route('data_entry.buy.diploma')->with('success','تم تسجيل هذا الدبلوم للطالب')->withInput();
 
         }catch(Exception $e){
-            return back()->with('error',$e->getMessage())->withInput();
+            return redirect()->route('data_entry.buy.diploma')->with('error',$e->getMessage())->withInput();
         }
     }
 
