@@ -367,11 +367,16 @@ class AdminController extends Controller
 
     public function buyCourse(){
         $date = date('Y-m-d');
-        $courses = Course::where('end_date', '>=', $date)->get();
+        $courses = Course::where('end_date', '>=', $date)
+            ->where(function ($query) {
+                $query->whereNull('diploma_id')
+                    ->orWhere('diploma_id', '=', '')
+                    ->orWhere('diploma_id', '=', 0);
+            })
+            ->get();
         $students = Student::whereHas('user', function ($query) {
             return $query->where('status', '=', 'active');
         })->get();
-
 
         return view('admin.courses.buy_course',['courses' => $courses, 'students' => $students]);
     }
