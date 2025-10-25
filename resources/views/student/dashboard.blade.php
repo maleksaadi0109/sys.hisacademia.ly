@@ -50,8 +50,6 @@ use App\Enums\UserType;
         </nav>
     </x-slot>
 
-    <x-slot name="title"><h1>{{__('أكاديمية متخصصة في تدريس اللغات والترجمة')}}</h1></x-slot>
-
     @yield('content')
 
 </x-app-layout>

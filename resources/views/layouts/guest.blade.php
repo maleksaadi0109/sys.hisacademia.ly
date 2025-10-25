@@ -17,12 +17,12 @@
         <link href="{{ asset('css/style.css') }}" rel="stylesheet" />
 
     </head>
-    <body class="font-sans text-gray-900 antialiased">
+    <body class="font-sans text-gray-900 antialiased bg-orginal">
         <div class="min-h-screen min-login flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
             <div class="text-center">
-                <img src="{{asset('logo.jpg')}}" class="rounded login-logo" >
+                <img src="{{asset('f.png')}}" class="rounded login-logo" >
             </div>
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg">
+            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg no-shadow">
                 {{ $slot }}
             </div>
         </div>

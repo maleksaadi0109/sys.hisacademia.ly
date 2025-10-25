@@ -213,6 +213,20 @@ box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
   color: white;
   font-size: 1.3rem;
 }
+/* nav edits */
+.navbar-brand{
+  position: relative;
+}
+.navbar-brand::before{
+  content: "";
+    position: absolute;
+    bottom: -6px;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background-color: #fff;
+}
+/* end nav edits */
 
 .navbar-dark .navbar-brand:focus,
 .navbar-dark .navbar-brand:hover{
@@ -281,13 +295,50 @@ td li {
 }
 
 .login-logo{
-  width: 20%;
+  width: 13%;
+  position: relative;
+  left: 9px;
 }
 @media (max-width: 768px ){
     .login-logo {
         width: 45%;
     }
 }
+/* login edits (remove box shadow and bg and repalce it) */
+.bg-orginal{
+  background-color: #182d3e;
+  overflow: hidden;
+}
+.min-login{
+  background-color: transparent !important;
+}
+.no-shadow{
+  box-shadow: none;
+  background-color: transparent !important;
+  position: relative;
+  overflow: visible !important;
+  padding: 9px 20px 30px 20px !important;
+}
+.no-shadow::before{
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 115%;
+  height: 100%;
+  background-color: rgb(239, 173, 1);
+  border-radius: 10px;
+}
+.buttons-grouped{
+  margin-top: 40px !important;
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+/* end of login edits */
 .min-h-screen main{
   background-color: white;
 }
@@ -381,59 +432,68 @@ table a{
 }
 
 .main-card {
-  margin: 20px;
+  margin: 15px;
   position: relative;
   width: 300px;
-  height: 300px;
-  background: rgb(24 45 62);
+  height: 220px;
+  background: #182d3e;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 25px;
   font-weight: bold;
-  border-radius: 15px;
+  border-radius: 9px;
   cursor: pointer;
   color: white;
+  overflow: hidden;
 }
-
-.main-card::before,
-.main-card::after {
+@media (max-width: 768px ){
+    .main-card {
+        width: 100%;
+        height: 220px;
+        margin: 10px 0 !important;
+    }
+}
+/* card edits */
+.main-card .card-contents{
+  text-align: center;
+}
+.main-card .card-contents i{
+  font-size: 2.6rem;
+  margin-bottom: 20px;
+  transition: all .4s;
+}
+.main-card .card-contents p{
+  margin-bottom: 0 !important;
+  transition: all .4s;
+}
+.main-card:hover .card-contents, .main-card:hover .card-contents p{
+  color: #efad01;
+}
+.main-card .card-contents a{
   position: absolute;
-  content: "";
-  width: 30%;
-  height: 30%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 25px;
-  font-weight: bold;
-  background-color: rgb(239, 173, 1);
-  transition: all 0.5s;
-  color: white;
-}
-
-.main-card::before {
   top: 0;
-  right: 0;
-  border-radius: 0 15px 0 100%;
-}
-
-.main-card::after {
-  bottom: 0;
   left: 0;
-  border-radius: 0 100%  0 15px;
-}
-
-.main-card:hover::before,
-.main-card:hover:after {
   width: 100%;
   height: 100%;
-  border-radius: 15px;
-  transition: all 0.5s;
+}
+  
+/* end of card edits */
+
+.main-card::before {
+  content: "";
+  position: absolute;
+  width: 0%;
+  height: 9px;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #efad01;
+  transition: all .4s;
 }
 
-.main-card:hover:after {
-  content: "اضغط";
+.main-card:hover::before {
+  width: 100%;
 }
 
 .a-main-card{
@@ -456,10 +516,8 @@ table a{
 }
 
 .main-card p{
-    top: 20%;
-    position: absolute;
-    font-size: 2.7rem;
-    color: rgb(239, 173, 1);
+    font-size: 2rem;
+    color: #fff;
 }
 
 
