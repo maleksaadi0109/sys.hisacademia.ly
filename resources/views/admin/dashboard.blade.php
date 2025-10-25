@@ -3,7 +3,7 @@ use App\Enums\UserType;
 @endphp
 <x-app-layout>
     <x-slot name="header">
-        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="/"><img class="header-logo" src="{{asset('logo.jpg')}}">الأكاديمية الإسبانية الليبية</a>
+        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="/"><img class="header-logo" src="{{asset('logo-small.png')}}">الأكاديمية الإسبانية الليبية</a>
 
         <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="عرض/إخفاء لوحة التنقل">
             <span class="navbar-toggler-icon"></span>
@@ -12,7 +12,7 @@ use App\Enums\UserType;
 
         <div class="navbar-nav">
             <div class="nav-item text-nowrap d-flex">
-                <a class="px-3 username-nav"><i class="fa fa-user"> </i>{{ Auth::user()->name . ' (' . UserType::userTypeAr()[Auth::user()->user_type] .')'}}</a>
+                <a class="px-3 username-nav"><i class="fa fa-user"> </i>{{ Auth::user()->name }}</a>
                 <form method="POST" action="{{ route('logout') }}">
                         @csrf
                     <a class="nav-link px-3" href="{{route('logout')}}" onclick="event.preventDefault(); this.closest('form').submit();">

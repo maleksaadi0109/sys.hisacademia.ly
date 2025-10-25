@@ -2,10 +2,10 @@
 @section('content')
 <section>
     <header>
-        <h2 class="text-lg font-medium text-gray-900">{{__(' كورسات الطالب')}}</h2>
+        <h2 class="text-lg font-medium text-gray-900" style="margin: 20px 5px;">{{__(' كورسات الطالب')}}</h2>
     </header>
 
-    <div class="container">
+    <div class="container" style="padding: 0;">
         <div class="row table-responsive">
             <table class="table table-light table-hover text-center">
                 <thead>
@@ -18,10 +18,10 @@
                         <th scope="col">المستوى</th>
                         <th scope="col">توقيت البداية</th>
                         <th scope="col">توقيت النهاية</th>
-                        <th scope="col">المدة الاجمالية</th>
-                        <th scope="col">المعدل اليومي للساعات</th>
-                        <th scope="col">اجمالي عدد الساعات</th>
-                        <th scope="col">عدد أيام الدراسة بالأسبوع</th>
+                        <th scope="col">المدة<br>الاجمالية</th>
+                        <th scope="col">المعدل<br>اليومي للساعات</th>
+                        <th scope="col">اجمالي عدد<br>الساعات</th>
+                        <th scope="col">عدد أيام<br>الدراسة بالأسبوع</th>
                         <th scope="col">أيام الدراسة </th>
                         <th scope="col">اسم المدرس</th>
                     </tr>

@@ -20,6 +20,10 @@ vertical-align: text-bottom;
   background-color: rgb(24 45 62 / var(--tw-bg-opacity)) !important;
   box-shadow: 0px 2px 15px 1px black !important;
 }
+.container{
+  margin: 20px auto !important;
+}
+    
 /*
 * Sidebar
 */
@@ -220,11 +224,16 @@ box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
 .navbar-brand::before{
   content: "";
     position: absolute;
-    bottom: -6px;
+    bottom: -4px;
     left: 0;
     width: 100%;
-    height: 6px;
+    height: 4px;
     background-color: #fff;
+}
+@media (max-width: 768px){
+  .navbar-brand::before{
+    display: none;
+  }
 }
 .nav-item{
   padding: 0 17px;
@@ -492,7 +501,19 @@ table a{
   width: 100%;
   height: 100%;
 }
-  
+
+.less-width{
+    width: calc(25% - 30px);
+    height: 170px;
+}
+.less-width .card-contents p{
+    font-size: 1.3rem;
+}
+@media (max-width: 768px){
+    .less-width{
+        width: 100%;
+    }
+}
 /* end of card edits */
 
 .main-card::before {
