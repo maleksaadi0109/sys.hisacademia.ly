@@ -175,12 +175,15 @@ Route::middleware(['auth', 'verified', 'role:data_entry','log.requests'])->group
     Route::get('/data_entry/diploma_calendar', [DataEntryController::class, 'diplomaCalendar'])->name('data_entry.diploma.calendar');
     Route::get('/data_entry/calendar_bydiploma/{id}', [DataEntryController::class, 'ajaxGetCalendarDiploma'])->name('data_entry.ajax.ajaxGetCalendarByDiploma');
 
-    ### courses ###
+### courses ###
     Route::get('/data_entry/add_course', [DataEntryController::class, 'addCourse'])->name('data_entry.add.course');
     Route::get('/data_entry/buy_course', [DataEntryController::class, 'buyCourse'])->name('data_entry.buy.course');
     Route::post('/data_entry/enroll_course', [DataEntryController::class, 'enrollCourse'])->name('data_entry.enroll.course');
     Route::post('/data_entry/register_course', [DataEntryController::class, 'registerCourse'])->name('data_entry.register.course');
-    Route::get('/data_entry/courses/{orderBy}/{sort}', [DataEntryController::class, 'courses'])->name('data_entry.courses');
+
+// Courses page (with AJAX search/filter)
+    Route::get('/data_entry/courses/{orderBy?}/{sort?}', [DataEntryController::class, 'courses'])->name('data_entry.courses');
+
     Route::get('/data_entry/edit_course/{id}', [DataEntryController::class, 'editCourse'])->name('data_entry.edit.course');
     Route::patch('/data_entry/update_course/{id}', [DataEntryController::class, 'updateCourse'])->name('data_entry.update.course');
     Route::get('/data_entry/time_by_course/{id}', [DataEntryController::class, 'ajaxGetTimeByCourse'])->name('data_entry.ajax.ajaxGetTimeByCourse');
@@ -188,15 +191,41 @@ Route::middleware(['auth', 'verified', 'role:data_entry','log.requests'])->group
     Route::delete('/data_entry/course/{id}', [DataEntryController::class, 'courseDestroy'])->name('data_entry.course.destroy');
 
     ### diploma ###
-    Route::get('/data_entry/add_diploma', [DataEntryController::class, 'addDiploma'])->name('data_entry.add.diploma');
-    Route::post('/data_entry/register_diploma', [DataEntryController::class, 'registerDiploma'])->name('data_entry.register.diploma');
-    Route::get('/data_entry/diploma_course/', [DataEntryController::class, 'diplomaCourse'])->name('data_entry.diploma.course');
-    Route::get('/data_entry/edit_diploma/{id}', [DataEntryController::class, 'editDiploma'])->name('data_entry.edit.diploma');
-    Route::patch('/data_entry/update_diploma/{id}', [DataEntryController::class, 'updateDiploma'])->name('data_entry.update.diploma');
-    Route::get('/data_entry/buy_diploma', [DataEntryController::class, 'buyDiploma'])->name('data_entry.buy.diploma');
-    Route::post('/data_entry/enroll_diploma', [DataEntryController::class, 'enrollDiploma'])->name('data_entry.enroll.diploma');
-    Route::get('/data_entry/time_by_diploma/{id}', [DataEntryController::class, 'ajaxGetTimeByDiploma'])->name('data_entry.ajax.ajaxGetTimeByDiploma');
-    Route::delete('/data_entry/diploma/{id}', [DataEntryController::class, 'diplomaDestroy'])->name('data_entry.diploma.destroy');
+    // Add new diploma
+    Route::get('/data_entry/add_diploma', [DataEntryController::class, 'addDiploma'])
+        ->name('data_entry.add.diploma');
+
+// Register/save new diploma
+    Route::post('/data_entry/register_diploma', [DataEntryController::class, 'registerDiploma'])
+        ->name('data_entry.register.diploma');
+
+// View diploma courses (handles both normal & AJAX requests)
+    Route::get('/data_entry/diploma_course/', [DataEntryController::class, 'diplomaCourse'])
+        ->name('data_entry.diploma.course');
+
+// Edit diploma
+    Route::get('/data_entry/edit_diploma/{id}', [DataEntryController::class, 'editDiploma'])
+        ->name('data_entry.edit.diploma');
+
+// Update diploma
+    Route::patch('/data_entry/update_diploma/{id}', [DataEntryController::class, 'updateDiploma'])
+        ->name('data_entry.update.diploma');
+
+// Buy/enroll in diploma
+    Route::get('/data_entry/buy_diploma', [DataEntryController::class, 'buyDiploma'])
+        ->name('data_entry.buy.diploma');
+
+    Route::post('/data_entry/enroll_diploma', [DataEntryController::class, 'enrollDiploma'])
+        ->name('data_entry.enroll.diploma');
+
+// AJAX helper for diploma timing
+    Route::get('/data_entry/time_by_diploma/{id}', [DataEntryController::class, 'ajaxGetTimeByDiploma'])
+        ->name('data_entry.ajax.ajaxGetTimeByDiploma');
+
+// Delete diploma
+    Route::delete('/data_entry/diploma/{id}', [DataEntryController::class, 'diplomaDestroy'])
+        ->name('data_entry.diploma.destroy');
+
 
     ### translation ###
     Route::get('/data_entry/customer', [DataEntryController::class, 'addCustomer'])->name('data_entry.add.customer');
@@ -212,8 +241,19 @@ Route::middleware(['auth', 'verified', 'role:data_entry','log.requests'])->group
     Route::get('/data_entry/edit_translation_deal/{id}', [DataEntryController::class, 'editTranslationDeal'])->name('data_entry.edit.translation_deal');
     Route::patch('/data_entry/update_translation_deal/{id}', [DataEntryController::class, 'updateTranslationDeal'])->name('data_entry.update.translation_deal');
     Route::delete('/data_entry/translation_deal/{id}', [DataEntryController::class, 'translationDealDestroy'])->name('data_entry.translation_deal.destroy');
-
-
+     ###coworking###
+    Route::get('/data_entry/coworking', [DataEntryController::class, 'coworkingspaceindex'])->name('data_entry.coworking');
+    Route::get('/data_entry/coworking/booking', [DataEntryController::class, 'booking'])->name('data_entry.booking');
+    Route::post('/data_entry/coworking/booking', [DataEntryController::class, 'savebooking'])->name('data_entry.bookingstore');
+    Route::get('/data_entry/coworking/booking/list', [DataEntryController::class, 'bookinglist'])->name('data_entry.bookinglist');
+    Route::patch('/data_entry/coworking/booking/{id}/cancel', [DataEntryController::class, 'cancelBooking'])->name('data_entry.bookings.cancel');
+    Route::get('/data_entry/coworking/booking', [DataEntryController::class, 'booking'])->name('data_entry.booking');
+    Route::post('/data_entry/coworking/booking', [DataEntryController::class, 'savebooking'])->name('data_entry.bookingstore');
+    Route::get('/data_entry/coworking/booking/list', [DataEntryController::class, 'bookinglist'])->name('data_entry.bookinglist');
+    Route::patch('/data_entry/coworking/booking/{id}/cancel', [DataEntryController::class, 'cancelBooking'])->name('data_entry.bookings.cancel');
+    Route::get('data_entry/bookingform',[DataEntryController::class,'booking'])->name('data_entry.booking');
+    Route::get('dataentry/booking',[DataEntryController::class,'bookinglist'])->name('data_entry.bookinglist');
+    Route::post('data_entry/booking',[DataEntryController::class,'savebooking'])->name('data_entry.bookingstore');
     ### reports ###
     Route::get('/data_entry/generate_general_monthly_report', [DataEntryController::class, 'generalMonthlyReport'])->name('data_entry.general.monthly.report');
     Route::post('/data_entry/general_monthly_report', [DataEntryController::class, 'generateGeneralMonthlyReport'])->name('data_entry.generate.general.monthly.report');
@@ -221,6 +261,8 @@ Route::middleware(['auth', 'verified', 'role:data_entry','log.requests'])->group
     Route::post('/data_entry/generate_course_report', [DataEntryController::class, 'generateCourseReport'])->name('data_entry.generate.course.report');
     Route::get('/data_entry/translation_report', [DataEntryController::class, 'translationReport'])->name('data_entry.translation.report');
     Route::post('/data_entry/generate_translation_report', [DataEntryController::class, 'generateTranslationReport'])->name('data_entry.generate.translation.report');
+    Route::post('/data_entry/apply-coupon', [DataEntryController::class, 'applyCoupon'])->name('data_entry.apply.coupon');
+
 });
 
 ######## financial_employee #########
