@@ -90,9 +90,9 @@
                         </a>
                         <div class="collapse div-collapse" id="collapse-1" style="">
                             <ul class="nav flex-column ul-collapse">
-                                <li class="li-collapse"><a href="{{route("data_entry.add.customer")}}" class="link-white d-inline-flex text-decoration-none rounded">إضافة زبون</a></li>
+                               
                                 <li class="li-collapse"><a href="{{route('data_entry.customers',['orderBy' => 'null','sort' => 'null'])}}" class="link-white d-inline-flex text-decoration-none rounded">إدارة الزبائن</a></li>
-                                <li class="li-collapse"><a href="{{route("data_entry.add.translation_deal")}}" class="link-white d-inline-flex text-decoration-none rounded">إضافة معاملة</a></li>
+
                                 <li class="li-collapse"><a href="{{route('data_entry.translation_deals',['orderBy' => 'null','sort' => 'null'])}}" class="link-white d-inline-flex text-decoration-none rounded">إدارة المعاملات</a></li>
                             </ul>
                         </div>
@@ -113,7 +113,7 @@
                     <!-- New Coworking Space Booking Section -->
                     <li class="nav-item">
                         <a class="nav-link" href="#">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M7 18H3V11.25M7 18V21M7 18H17M17 18H21V11.25M17 18V21M3 11.25L3 7.5C3 6.17392 3.52678 4.90215 4.46447 3.96447C5.40215 3.02678 6.67392 2.5 8 2.5H16C17.3261 2.5 18.5979 3.02678 19.5355 3.96447C20.4732 4.90215 21 6.17392 21 7.5V11.25M3 11.25H21M10 14H14" stroke="#adb5bd" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+                            <i class="fa-solid fa-building" style="color: #adb5bd; font-size: 24px;"></i>
                             {{__('حجز مساحة عمل')}}
                         </a>
                         <div class="collapse div-collapse" id="collapse-workspace">
@@ -124,6 +124,20 @@
                         </div>
                     </li>
                     <!-- End New Section -->
+
+                    <!-- Reports Section -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M9 12H15M9 16H15M17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3H12.5858C12.851 3 13.1054 3.10536 13.2929 3.29289L18.7071 8.70711C18.8946 8.89464 19 9.149 19 9.41421V19C19 20.1046 18.1046 21 17 21Z" stroke="#adb5bd" stroke-width="1.5" stroke-linecap="round"></path> </g></svg>
+                            {{__('التقارير')}}
+                        </a>
+                        <div class="collapse div-collapse" id="collapse-reports">
+                            <ul class="nav flex-column ul-collapse">
+                                <li class="li-collapse"><a href="{{route('data_entry.reports')}}" class="link-white d-inline-flex text-decoration-none rounded">التقارير</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <!-- End Reports Section -->
 
                 </ul>
             </div>

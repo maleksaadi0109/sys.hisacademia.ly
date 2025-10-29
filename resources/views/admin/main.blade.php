@@ -27,6 +27,7 @@
             <div class="row main-row justify-content-between">
                 <a href="{{route('revenues',['orderBy' => 'null','sort' => 'null'])}}"  class="a-main-card" ><div class="main-card "><p><i class="fa-solid fa-usd"></p></i>إيرادات الكورسات</div></a>
                 <a href="{{route('expenses',['orderBy' => 'null','sort' => 'null'])}}" class="a-main-card" ><div class="main-card "><p><i class="fa-solid fa-exchange"></p></i>المصروفات</div></a>
+                <a href="{{route('admin.coupons.index')}}" class="a-main-card" ><div class="main-card "><p><i class="fa-solid fa-ticket"></p></i>إدارة الكوبونات</div></a>
             </div>
             
         </div>

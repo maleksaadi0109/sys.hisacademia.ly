@@ -9,8 +9,10 @@
         @endphp
         <div class="container">
             <div class="row">
-                <input type="hidden" id="original_diploma_price" value="0">
-                <input type="hidden" id="final_diploma_price" value="0">
+                    <input type="hidden" id="original_diploma_price" value="0">
+                    <input type="hidden" id="final_diploma_price" value="0">
+                    <input type="hidden" id="applied_coupon_code" name="coupon_code" value="">
+                    <input type="hidden" id="applied_coupon_type" name="coupon_type" value="">
 
                 <form method="POST" enctype="multipart/form-data" action="{{ route('data_entry.enroll.diploma') }}">
                     @csrf
@@ -80,7 +82,7 @@
 
                         <!-- Diploma Courses Table -->
                         <div class="row table-responsive" id="table_diploma_time">
-                            <h5>معلومات هذا الدبلوم (السعر: <span id="span_price">0</span>)</h5>
+                            <h5>معلومات هذا الدبلوم (السعر: <span id="span_price">0 دينار</span>)</h5>
                             <table class="student_table_course table table-light table-hover text-center" id="table_diploma">
                             </table>
                         </div>
@@ -99,7 +101,7 @@
                         <div class="mt-4 col-lg-6">
                             <x-input-label for="value_rec" :value="__('القيمة المدفوعة')" />
                             <div class="input-group">
-                                <x-text-input id="value_rec" value="{{old('value_rec')}}" class="form-control" min="0" type="number" name="value_rec" required autofocus autocomplete="value_rec" />
+                                <x-text-input id="value_rec" value="{{old('value_rec', '0')}}" class="form-control" min="0" type="number" name="value_rec" required autofocus autocomplete="value_rec" />
                                 <span class="input-group-text" id="total_price_span">/ 0</span>
                             </div>
                             <x-input-error :messages="$errors->get('value_rec')" class="mt-2" />
@@ -265,11 +267,13 @@
 
 // Update Price UI
             function updatePriceUI(price) {
-                $('#span_price').html(price);
-                $('#value_rec').val(price);
-                $('#value_rec').attr('max', price);
-                $('#total_price_span').text('/ ' + price);
-                $('#final_diploma_price').val(price);
+                // Ensure price is a number and format it properly
+                var formattedPrice = parseFloat(price).toFixed(2);
+                $('#span_price').html(formattedPrice + ' دينار');
+                $('#value_rec').val(formattedPrice);
+                $('#value_rec').attr('max', formattedPrice);
+                $('#total_price_span').text('/ ' + formattedPrice);
+                $('#final_diploma_price').val(formattedPrice);
                 $('#value_rec_error').text('');
             }
 
@@ -291,23 +295,32 @@
                 status_div.html('<span class="text-info">جاري التحقق...</span>');
 
                 $.ajax({
-                    url: '{{ url("/data_entry/apply-coupon-diploma") }}',
+                    url: '{{ url("/data_entry/apply-coupon") }}',
                     type: 'POST',
                     data: {
                         _token: '{{ csrf_token() }}',
                         coupon_code: coupon_code,
-                        diploma_id: diploma_id
+                        diploma_id: diploma_id,
+                        type: 'diploma'
                     },
                     dataType: 'JSON',
                     success: function(response) {
                         if (response.success) {
                             var new_price = response.new_price;
-                            status_div.html('<span class="text-success">تم تطبيق الخصم! السعر الجديد: ' + new_price + '</span>');
+                            status_div.html('<span class="text-success">تم تطبيق الخصم! السعر الجديد: ' + parseFloat(new_price).toFixed(2) + ' دينار</span>');
                             updatePriceUI(new_price);
+                            
+                            // Store coupon information
+                            $('#applied_coupon_code').val(coupon_code);
+                            $('#applied_coupon_type').val(response.coupon_type);
                         } else {
                             status_div.html('<span class="text-danger">' + response.message + '</span>');
                             var original_price = $('#original_diploma_price').val();
                             updatePriceUI(original_price);
+                            
+                            // Clear coupon information
+                            $('#applied_coupon_code').val('');
+                            $('#applied_coupon_type').val('');
                         }
                     },
                     error: function() {

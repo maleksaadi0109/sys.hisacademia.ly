@@ -1,4 +1,5 @@
 @extends('data_entry.dashboard')
+
 @section('content')
 <section>
     <header>
@@ -6,42 +7,109 @@
     </header>
 
     <div class="container">
-        <div class="row table-responsive">
-            <table class="table table-light table-hover text-center">
-                <thead>
-                    <tr>
-                        <th scope="col"><a href="{{route('customers',['orderBy' => 'id','sort' => 'asc'])}}"># <i class="fas fa-sort text-right"></a></th>
-                        <th scope="col"><a href="{{route('customers',['orderBy' => 'name','sort' => 'asc'])}}">اسم الزبون<i class="fas fa-sort text-right"></a></th>
-                        <th scope="col">رقم الهاتف</th>
-                        <th scope="col">العنوان</th>
-                        <th scope="col">تعديل بيانات الزبون</th>
-                        <th scope="col">حذف</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($customers as $customer) 
-                    <tr>
-                        <td scope="row">{{ $customer->id }}</td>
-                        <td scope="row">{{ $customer->name }}</td>
-                        <td scope="row">{{ $customer->phone }}</td>
-                        <td scope="row">{{ $customer->address }}</td>
-                        <td scope="row"><a class="me-2 btn btn-lg edit-button" data-mdb-ripple-init="" href="{{route('data_entry.edit.customer',['id' => $customer->id])}}"><i class="far fa-edit"></i></a></td>
-                        <td><a class="btn btn-sm delete-button " data-mdb-ripple-init="" href="{{route('data_entry.customer.destroy',['id' => $customer->id])}}"
-                            onclick="event.preventDefault();document.getElementById('delete-form-{{ $customer->id }}').submit();">
-                            <i class="far fa-trash-alt"></i></a></td>
+        <!-- Add Customer Button -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <a href="{{ route('data_entry.add.customer') }}" class="btn btn-success btn-lg">
+                    <i class="fas fa-plus me-2"></i>إضافة زبون جديد
+                </a>
+            </div>
+        </div>
 
-                        <form id="delete-form-{{ $customer->id }}" action="{{route('data_entry.customer.destroy',['id' => $customer->id])}}"
-                            method="post" style="display: none;">
-                            @method('delete')
-                            @csrf
-                        </form> 
-                    </tr>
+        <!-- Search and Filter Section -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <input type="text" id="searchInput" class="form-control"
+                       placeholder="البحث في اسم الزبون أو رقم الهاتف...">
+            </div>
+            <div class="col-md-4">
+                <select id="addressFilter" class="form-select">
+                    <option value="">جميع العناوين</option>
+                    @foreach($addresses as $address)
+                        <option value="{{ $address }}">{{ $address }}</option>
                     @endforeach
-                </tbody>
-            </table>
-            {{ $customers->links() }}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button id="resetFilters" class="btn btn-outline-secondary w-100">
+                    <i class="fas fa-undo me-2"></i>إعادة تعيين
+                </button>
+            </div>
+        </div>
+
+        <!-- Customers Table Container -->
+        <div class="row table-responsive">
+            <div id="customersTableContainer">
+                @include('data_entry.translation.partials.customers_table', ['customers' => $customers])
+            </div>
         </div>
     </div>
+</section>
+
+@push('scripts')
+    <script>
+        $(document).ready(function() {
+            let searchTimeout;
+
+            // Live Search
+            $('#searchInput').on('keyup', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    filterCustomers();
+                }, 300);
+            });
+
+            // Address Filter
+            $('#addressFilter').on('change', function() {
+                filterCustomers();
+            });
+
+            // Reset Filters
+            $('#resetFilters').on('click', function() {
+                $('#searchInput').val('');
+                $('#addressFilter').val('');
+                filterCustomers();
+            });
+
+            function filterCustomers() {
+                const search = $('#searchInput').val();
+                const address = $('#addressFilter').val();
+
+                // Show loading indicator
+                $('#customersTableContainer').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>');
+
+                $.ajax({
+                    url: '{{ route("data_entry.customers.ajax") }}',
+                    type: 'GET',
+                    data: {
+                        search: search,
+                        address: address
+                    },
+                    success: function(response) {
+                        $('#customersTableContainer').html(response);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX Error:', error);
+                        console.error('Response:', xhr.responseText);
+                        console.error('Status:', status);
+                        console.error('XHR:', xhr);
+                        
+                        let errorMessage = 'حدث خطأ أثناء تحميل البيانات';
+                        if (xhr.status === 404) {
+                            errorMessage = 'الصفحة غير موجودة';
+                        } else if (xhr.status === 500) {
+                            errorMessage = 'خطأ في الخادم';
+                        } else if (xhr.status === 0) {
+                            errorMessage = 'لا يمكن الاتصال بالخادم';
+                        }
+                        
+                        $('#customersTableContainer').html('<div class="alert alert-danger text-center">' + errorMessage + '</div>');
+                    }
+                });
+            }
+        });
+    </script>
+@endpush
 </section>
 
 @stop

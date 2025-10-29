@@ -160,6 +160,18 @@ use App\Enums\UserType;
                             </ul>
                         </div>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M4 6H20C21.1 6 22 6.9 22 8V16C22 17.1 21.1 18 20 18H4C2.9 18 2 17.1 2 16V8C2 6.9 2.9 6 4 6ZM4 8V16H20V8H4ZM6 10H8V12H6V10ZM10 10H12V12H10V10ZM14 10H16V12H14V10ZM6 14H8V16H6V14ZM10 14H12V16H10V14ZM14 14H16V16H14V14Z" fill="#adb5bd"></path> </g></svg>
+                            {{__('الكوبونات')}}
+                        </a>
+                        <div class="collapse div-collapse" id="collapse-1" style="">
+                            <ul class="nav flex-column ul-collapse">
+                                <li class="li-collapse"><a href="{{ route('admin.coupons.create') }}" class="link-white d-inline-flex text-decoration-none rounded">إضافة كوبون</a></li>
+                                <li class="li-collapse"><a href="{{ route('admin.coupons.index') }}" class="link-white d-inline-flex text-decoration-none rounded">إدارة الكوبونات</a></li>
+                            </ul>
+                        </div>
+                    </li>
                 </ul>
             </div>
         </nav>

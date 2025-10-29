@@ -1152,6 +1152,13 @@ class AdminController extends Controller
             "title" => $title,
             "revenue" => $revenue,
             "student" => $student,
+        ],[
+            'format' => 'A5',
+            'orientation' => 'P',
+            'margin_left' => 10,
+            'margin_right' => 10,
+            'margin_top' => 8,
+            'margin_bottom' => 8,
         ])->download('ايصال-تسديد-رسوم-التسجيل'.time().'.pdf');
 
     }

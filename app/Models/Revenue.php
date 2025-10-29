@@ -22,6 +22,10 @@ class Revenue extends Model
         'value_rec',
         'value_rem',
         'diploma_id',
+        'coupon_code',
+        'original_price',
+        'discount_amount',
+        'coupon_type',
     ];
 
     public function user(): HasOne

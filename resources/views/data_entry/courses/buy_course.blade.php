@@ -2,17 +2,19 @@
     @section('content')
         <section>
             <header>
-                <h2 class="text-lg font-medium text-gray-900">{{__('حجز دبلوم للطالب')}}</h2>
+                <h2 class="text-lg font-medium text-gray-900">{{__('حجز كورس للطالب')}}</h2>
             </header>
             @php
                 use App\Enums\WeekDays;
             @endphp
             <div class="container">
                 <div class="row">
-                    <input type="hidden" id="original_diploma_price" value="0">
-                    <input type="hidden" id="final_diploma_price" value="0">
+                    <input type="hidden" id="original_course_price" value="0">
+                    <input type="hidden" id="final_course_price" value="0">
+                    <input type="hidden" id="applied_coupon_code" name="coupon_code" value="">
+                    <input type="hidden" id="applied_coupon_type" name="coupon_type" value="">
 
-                    <form method="POST" enctype="multipart/form-data" action="{{ route('data_entry.enroll.diploma') }}">
+                    <form method="POST" enctype="multipart/form-data" action="{{ route('data_entry.enroll.course') }}">
                         @csrf
                         <div class="row">
 
@@ -23,7 +25,7 @@
                                     <select class="form-select" id="selectstudentchange" name="student_id" required>
                                         <option selected disabled>أختر....</option>
                                         @foreach($students as $value)
-                                            @if(old('student_id') == $value->id)
+                                            @if(old('student_id') == $value->id || (isset($selectedStudent) && $selectedStudent && $selectedStudent->id == $value->id))
                                                 <option selected value="{{$value->id}}">{{$value->user->name}}</option>
                                             @else
                                                 <option value="{{$value->id}}">{{$value->user->name}}</option>
@@ -50,10 +52,10 @@
                                 </table>
                             </div>
 
-                            <!-- Diploma Selection -->
+                            <!-- Course Selection -->
                             <div class="mt-5 col-lg-12">
                                 <div class="input-group mb-3">
-                                    <label class="input-group-text" for="selectsoursechange">الدبلوم</label>
+                                    <label class="input-group-text" for="selectsoursechange">الكورس</label>
                                     <select class="form-select" id="selectsoursechange" name="course_id" required>
                                         <option selected disabled>أختر....</option>
                                         @foreach($courses as $value)
@@ -65,7 +67,7 @@
                                         @endforeach
                                     </select>
                                     @php
-                                        $messages = $errors->get('diploma_id');
+                                        $messages = $errors->get('course_id');
                                     @endphp
                                     @if ($messages)
                                         <ul class="text-sm text-red-600 space-y-1 mt-2">
@@ -77,10 +79,10 @@
                                 </div>
                             </div>
 
-                            <!-- Diploma Courses Table -->
-                            <div class="row table-responsive" id="table_diploma_time">
-                                <h5>معلومات هذا الدبلوم (السعر: <span id="span_price">0</span>)</h5>
-                                <table class="student_table_course table table-light table-hover text-center" id="table_diploma">
+                            <!-- Course Details Table -->
+                            <div class="row table-responsive" id="table_course_time">
+                                <h5>معلومات هذا الكورس (السعر: <span id="span_price">0 دينار</span>)</h5>
+                                <table class="student_table_course table table-light table-hover text-center" id="table_course">
                                 </table>
                             </div>
 
@@ -98,7 +100,7 @@
                             <div class="mt-4 col-lg-6">
                                 <x-input-label for="value_rec" :value="__('القيمة المدفوعة')" />
                                 <div class="input-group">
-                                    <x-text-input id="value_rec" value="{{old('value_rec')}}" class="form-control" min="0" type="number" name="value_rec" required autofocus autocomplete="value_rec" />
+                                    <x-text-input id="value_rec" value="{{old('value_rec', '0')}}" class="form-control" min="0" type="number" name="value_rec" required autofocus autocomplete="value_rec" />
                                     <span class="input-group-text" id="total_price_span">/ 0</span>
                                 </div>
                                 <x-input-error :messages="$errors->get('value_rec')" class="mt-2" />
@@ -121,7 +123,7 @@
             $(document).ready(function () {
 
                 $('#table_student_time').hide();
-                $('#table_diploma_time').hide();
+                $('#table_course_time').hide();
 
                 // Select Course Change
                 function SelectCourseChange(element) {
@@ -131,8 +133,8 @@
                     var course_price = parseFloat(element.find(':selected').attr('data-price'));
 
                     // Store original and final price
-                    $('#original_diploma_price').val(course_price);
-                    $('#final_diploma_price').val(course_price);
+                    $('#original_course_price').val(course_price);
+                    $('#final_course_price').val(course_price);
 
                     // Update price UI
                     updatePriceUI(course_price);
@@ -146,11 +148,11 @@
                         type: 'GET',
                         dataType: 'JSON',
                         success: function(result){
-                            $('#table_diploma').empty();
-                            $('#table_diploma_time').hide();
-                            var table = document.getElementById('table_diploma');
+                            $('#table_course').empty();
+                            $('#table_course_time').hide();
+                            var table = document.getElementById('table_course');
                             if (result['datacourses'].length != 0){
-                                $('#table_diploma_time').show();
+                                $('#table_course_time').show();
                                 createTable(result['datacourses'], table);
                             }
                         },
@@ -228,22 +230,24 @@
 
                 // Update Price UI
                 function updatePriceUI(price) {
-                    $('#span_price').html(price);
-                    $('#value_rec').val(price);
-                    $('#value_rec').attr('max', price);
-                    $('#total_price_span').text('/ ' + price);
-                    $('#final_diploma_price').val(price);
+                    // Ensure price is a number and format it properly
+                    var formattedPrice = parseFloat(price).toFixed(2);
+                    $('#span_price').html(formattedPrice + ' دينار');
+                    $('#value_rec').val(formattedPrice);
+                    $('#value_rec').attr('max', formattedPrice);
+                    $('#total_price_span').text('/ ' + formattedPrice);
+                    $('#final_course_price').val(formattedPrice);
                     $('#value_rec_error').text('');
                 }
 
                 // Apply Coupon Code
                 $('#apply_coupon_btn').click(function() {
                     var coupon_code = $('#coupon_code').val();
-                    var diploma_id = $('#selectsoursechange').val();
+                    var course_id = $('#selectsoursechange').val();
                     var status_div = $('#coupon_status');
 
-                    if (!diploma_id) {
-                        status_div.html('<span class="text-danger">الرجاء اختيار الدبلوم أولاً.</span>');
+                    if (!course_id) {
+                        status_div.html('<span class="text-danger">الرجاء اختيار الكورس أولاً.</span>');
                         return;
                     }
                     if (!coupon_code) {
@@ -254,28 +258,37 @@
                     status_div.html('<span class="text-info">جاري التحقق...</span>');
 
                     $.ajax({
-                        url: '{{ url("/data_entry/apply-coupon-diploma") }}',
+                        url: '{{ url("/data_entry/apply-coupon") }}',
                         type: 'POST',
                         data: {
                             _token: '{{ csrf_token() }}',
                             coupon_code: coupon_code,
-                            diploma_id: diploma_id
+                            course_id: course_id,
+                            type: 'course'
                         },
                         dataType: 'JSON',
                         success: function(response) {
                             if (response.success) {
                                 var new_price = response.new_price;
-                                status_div.html('<span class="text-success">تم تطبيق الخصم! السعر الجديد: ' + new_price + '</span>');
+                                status_div.html('<span class="text-success">تم تطبيق الخصم! السعر الجديد: ' + parseFloat(new_price).toFixed(2) + ' دينار</span>');
                                 updatePriceUI(new_price);
+                                
+                                // Store coupon information
+                                $('#applied_coupon_code').val(coupon_code);
+                                $('#applied_coupon_type').val(response.coupon_type);
                             } else {
                                 status_div.html('<span class="text-danger">' + response.message + '</span>');
-                                var original_price = $('#original_diploma_price').val();
+                                var original_price = $('#original_course_price').val();
                                 updatePriceUI(original_price);
+                                
+                                // Clear coupon information
+                                $('#applied_coupon_code').val('');
+                                $('#applied_coupon_type').val('');
                             }
                         },
                         error: function() {
                             status_div.html('<span class="text-danger">حدث خطأ في الخادم.</span>');
-                            var original_price = $('#original_diploma_price').val();
+                            var original_price = $('#original_course_price').val();
                             updatePriceUI(original_price);
                         }
                     });

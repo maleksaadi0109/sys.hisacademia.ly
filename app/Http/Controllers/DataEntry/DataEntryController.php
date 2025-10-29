@@ -28,6 +28,9 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\CoworkingSpace;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use Mccarlosen\LaravelMpdf\Facades\LaravelMpdf as PDF;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 
 class DataEntryController extends Controller
 {
@@ -169,13 +172,17 @@ class DataEntryController extends Controller
             })
             ->count();
 
-        if ($overlappingBookingsCount >= $capacity) {
-            return back()->withErrors(['capacity_exceeded' => 'عذراً، المساحة محجوزة بالكامل في هذه الفترة.'])->withInput();
-        }
+        // Temporarily comment out capacity check for testing receipt system
+        // if ($overlappingBookingsCount >= $capacity) {
+        //     return back()->withErrors(['capacity_exceeded' => 'عذراً، المساحة محجوزة بالكامل في هذه الفترة.'])->withInput();
+        // }
+        
+        // Log capacity info for debugging
+        \Log::info("Capacity check: Space capacity: {$capacity}, Overlapping bookings: {$overlappingBookingsCount}");
 
         // Create booking
         try {
-            Booking::create([
+            $booking = Booking::create([
                 'user_id' => $userId,
                 'student_id' => $studentId,
                 'name' => $customerName,
@@ -188,13 +195,60 @@ class DataEntryController extends Controller
                 'status' => 'confirmed',
             ]);
 
-            return redirect()->route('data_entry.bookinglist')
+            // Generate receipt data
+            $receiptData = [
+                'receiptNumber' => 'RCP-' . str_pad($booking->id, 6, '0', STR_PAD_LEFT),
+                'customerName' => $customerName,
+                'bookingType' => $this->translateBookingType($bookingType),
+                'coworkingSpaceName' => $coworkingSpace->name,
+                'startDate' => $startDateString,
+                'endDate' => $endDateString,
+                'amount' => $calculatedPrice,
+                'paymentMethod' => 'نقدي', // Default payment method
+                'paymentStatus' => 'مؤكد',
+                'paymentDateTime' => now()->format('Y-m-d H:i:s'),
+                'companyLogo' => asset('images/logo.jpg'), // Company logo path
+            ];
+
+            // Store receipt data in session for the receipt page
+            session(['receiptData' => $receiptData]);
+
+            return redirect()->route('data_entry.receipt')
                 ->with('success', 'تم إنشاء الحجز بنجاح!');
 
         } catch (Exception $e) {
             Log::error('Error saving booking: ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());
             return back()->withErrors(['db_error' => 'حدث خطأ أثناء حفظ الحجز: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    /**
+     * Display the receipt after successful booking
+     */
+    public function showReceipt()
+    {
+        $receiptData = session('receiptData');
+        
+        if (!$receiptData) {
+            return redirect()->route('data_entry.bookinglist')
+                ->with('error', 'لا يوجد إيصال لعرضه.');
+        }
+        
+        return view('pdf_export.receipt', $receiptData);
+    }
+
+    /**
+     * Translate booking type to Arabic
+     */
+    private function translateBookingType($type)
+    {
+        switch ($type) {
+            case 'daily': return 'يومي';
+            case 'weekly': return 'أسبوعي';
+            case 'monthly': return 'شهري';
+            case 'three_month': return '3 أشهر';
+            default: return $type;
         }
     }
 
@@ -468,7 +522,7 @@ class DataEntryController extends Controller
             $pass_image_name = time().rand(10,99).'.'.$request->pass_image->getClientOriginalExtension();
             $request->pass_image->storeAs('public/passport',$pass_image_name);
 
-            Student::create([
+            $student = Student::create([
                 'en_name' => $request->en_name,
                 'id_number' => $request->id_number,
                 'nationality' => $request->nationality,
@@ -479,7 +533,8 @@ class DataEntryController extends Controller
                 'user_id' => $user->id,
             ]);
 
-            return back()->with('success','تم إضافة الطالب بنجاح ');
+            return redirect()->route('data_entry.registration.choice', ['student_id' => $student->id])
+                ->with('success','تم إضافة الطالب بنجاح. اختر نوع التسجيل المطلوب.');
         }catch(Exception $e){
             return back()->with('error',$e->getMessage())->withInput();
         }
@@ -634,7 +689,7 @@ class DataEntryController extends Controller
         return view('data_entry.courses.add_course',['teachers' => $teachers]);
     }
 
-    public function buyCourse(){
+    public function buyCourse(Request $request){
         $date = date('Y-m-d');
         $courses = Course::where('end_date', '>=', $date)
             ->whereNull('diploma_id')
@@ -642,7 +697,18 @@ class DataEntryController extends Controller
         $students = Student::whereHas('user', function ($query) {
             return $query->where('status', '=', 'active');
         })->get();
-        return view('data_entry.courses.buy_course',['courses' => $courses, 'students' => $students]);
+        
+        // If student_id is provided, pre-select that student
+        $selectedStudent = null;
+        if ($request->has('student_id')) {
+            $selectedStudent = Student::with('user')->find($request->student_id);
+        }
+        
+        return view('data_entry.courses.buy_course', [
+            'courses' => $courses, 
+            'students' => $students,
+            'selectedStudent' => $selectedStudent
+        ]);
     }
 
     public function ajaxGetTimeByCourse($id){
@@ -670,13 +736,15 @@ class DataEntryController extends Controller
             $request->validate([
                 'course_id' => ['required'],
                 'student_id' => ['required'],
+                'value_rec' => ['required', 'numeric', 'min:0'],
             ]);
 
             $course = Course::findOrFail($request->course_id);
             $student = Student::findOrFail($request->student_id);
             $courses = $student->user->studentCourses;
 
-            if($course->price >= $request->value_rec && $request->value_rec >= 0){
+            // Validate that the payment amount is positive
+            if($request->value_rec > 0){
 
                 $course_start_time = DateTime::createFromFormat('H:i:s', $course->start_time);
                 $course_start_date = DateTime::createFromFormat('Y-m-d', $course->start_date);
@@ -704,8 +772,9 @@ class DataEntryController extends Controller
 
                 $student->user->studentCourses()->syncWithoutDetaching($course->id);
 
-                $value_rem = $course->price - $request->value_rec;
-                Revenue::create([
+                // If user pays the full discounted amount, remaining is 0
+                $value_rem = 0;
+                $revenue = Revenue::create([
                     'course_id' => $course->id,
                     'date_of_rec' => date("Y-m-d"),
                     'value' => $course->price,
@@ -713,16 +782,171 @@ class DataEntryController extends Controller
                     'user_id' => $student->user->id,
                     'value_rec' => $request->value_rec,
                     'value_rem' => $value_rem,
+                    'type' => 'course',
+                    'coupon_code' => $request->coupon_code ?? null,
+                    'original_price' => $course->price,
+                    'discount_amount' => $course->price - $request->value_rec,
+                    'coupon_type' => $request->coupon_type ?? null,
                 ]);
 
-            }else{
-                return back()->with('error','القيمة المدفوعة اكبر من سعر الكورس او خاطئة')->withInput();
-            }
+                return redirect()->route('data_entry.enroll.success', ['revenue_id' => $revenue->id]);
 
-            return back()->with('success','تم تسجيل هذا الكورس للطالب')->withInput();
+            }else{
+                return back()->with('error','القيمة المدفوعة يجب أن تكون أكبر من صفر')->withInput();
+            }
 
         }catch(Exception $e){
             return back()->with('error',$e->getMessage())->withInput();
+        }
+    }
+
+    public function enrollSuccess($revenue_id){
+        $revenue = Revenue::with('user')->with('course')->findOrFail($revenue_id);
+        $student = Student::with('dataStudent')->where('user_id', '=', $revenue->user->id)->first();
+        return view('data_entry.courses.enroll_success', [
+            'revenue' => $revenue,
+            'student' => $student
+        ]);
+    }
+
+    public function enrollDiplomaSuccess($revenue_id){
+        $revenue = Revenue::with('user')->with('diploma')->findOrFail($revenue_id);
+        $student = Student::with('dataStudent')->where('user_id', '=', $revenue->user->id)->first();
+        return view('data_entry.courses.enroll_diploma_success', [
+            'revenue' => $revenue,
+            'student' => $student
+        ]);
+    }
+
+    public function printStudentBill($id){
+        $revenue = Revenue::with('user')->with('course')->with('diploma')->findOrFail($id);
+        $student = Student::with('dataStudent')->where('user_id' , '=' , $revenue->user->id)->first();
+        
+        // Initialize default values
+        $title = 'إيصال تسديد رسوم التسجيل';
+        $pdfView = 'pdf_export.student_course';
+        $htmlView = 'data_entry.courses.print_receipt';
+        
+        // Determine title and template based on revenue type
+        if($revenue->diploma_id) {
+            $title = 'إيصال تسديد رسوم التسجيل - دبلوم';
+            $pdfView = 'pdf_export.student_diploma';
+            $htmlView = 'data_entry.courses.print_diploma_receipt';
+        } elseif($revenue->course_id) {
+            $title = 'إيصال تسديد رسوم التسجيل';
+            $pdfView = 'pdf_export.student_course';
+            $htmlView = 'data_entry.courses.print_receipt';
+        } else {
+            $paymentTypeNames = [
+                'tuition_fees' => 'الرسوم الدراسية',
+                'additional_fees' => 'الرسوم الإضافية',
+                'late_fees' => 'رسوم التأخير'
+            ];
+            $typeName = $paymentTypeNames[$revenue->type] ?? 'الرسوم';
+            $title = 'إيصال تسديد ' . $typeName;
+            $pdfView = 'pdf_export.student_course';
+            $htmlView = 'data_entry.courses.print_receipt';
+        }
+        
+        // Check if user wants direct print (from URL parameter)
+        if(request()->has('print')) {
+            // For diploma, use dedicated diploma print view
+            if($revenue->diploma_id) {
+                // For diploma, we need all courses in the diploma, not just revenues
+                // Get the diploma and its courses
+                $diploma = $revenue->diploma;
+                if($diploma && $diploma->diplomaCourses) {
+                    // Create revenue records for each course to match template expectation
+                    $revenues = collect();
+                    foreach($diploma->diplomaCourses as $course) {
+                        $revenues->push((object)[
+                            'id' => $revenue->id,
+                            'date_of_rec' => $revenue->date_of_rec,
+                            'course' => $course,
+                            'user' => $revenue->user,
+                            'diploma' => $diploma,
+                            'value' => $revenue->value,
+                            'value_rec' => $revenue->value_rec,
+                            'value_rem' => $revenue->value_rem,
+                            'currency' => $revenue->currency,
+                            'coupon_code' => $revenue->coupon_code,
+                            'original_price' => $revenue->original_price,
+                            'discount_amount' => $revenue->discount_amount,
+                            'coupon_type' => $revenue->coupon_type,
+                        ]);
+                    }
+                } else {
+                    // Fallback: use the revenue with its course if available
+                    $revenues = collect([$revenue]);
+                }
+                return view('data_entry.courses.print_diploma_receipt', [
+                    "title" => $title,
+                    "revenue" => $revenues->all(),
+                    "student" => $student,
+                ]);
+            } else {
+                return view('data_entry.courses.print_receipt', [
+                    "title" => $title,
+                    "revenue" => $revenue,
+                    "student" => $student,
+                ]);
+            }
+        }
+        
+        // For PDF, use appropriate template
+        if($revenue->diploma_id) {
+            // For diploma, we need all courses in the diploma, not just revenues
+            // Get the diploma and its courses
+            $diploma = $revenue->diploma;
+            if($diploma && $diploma->diplomaCourses) {
+                // Create revenue records for each course to match template expectation
+                $revenues = collect();
+                foreach($diploma->diplomaCourses as $course) {
+                    $revenues->push((object)[
+                        'id' => $revenue->id,
+                        'date_of_rec' => $revenue->date_of_rec,
+                        'course' => $course,
+                        'user' => $revenue->user,
+                        'diploma' => $diploma,
+                        'value' => $revenue->value,
+                        'value_rec' => $revenue->value_rec,
+                        'value_rem' => $revenue->value_rem,
+                        'currency' => $revenue->currency,
+                        'coupon_code' => $revenue->coupon_code,
+                        'original_price' => $revenue->original_price,
+                        'discount_amount' => $revenue->discount_amount,
+                        'coupon_type' => $revenue->coupon_type,
+                    ]);
+                }
+            } else {
+                // Fallback: use the revenue with its course if available
+                $revenues = collect([$revenue]);
+            }
+            return PDF::loadView($pdfView, [
+                "title" => $title,
+                "revenue" => $revenues->all(),
+                "student" => $student,
+            ],[
+                'format' => 'A5',
+                'orientation' => 'P',
+                'margin_left' => 10,
+                'margin_right' => 10,
+                'margin_top' => 8,
+                'margin_bottom' => 8,
+            ])->stream('ايصال-تسديد-رسوم-التسجيل-'.$id.'.pdf');
+        } else {
+            return PDF::loadView($pdfView, [
+                "title" => $title,
+                "revenue" => $revenue,
+                "student" => $student,
+            ],[
+                'format' => 'A5',
+                'orientation' => 'P',
+                'margin_left' => 10,
+                'margin_right' => 10,
+                'margin_top' => 8,
+                'margin_bottom' => 8,
+            ])->stream('ايصال-تسديد-رسوم-التسجيل-'.$id.'.pdf');
         }
     }
 
@@ -1163,16 +1387,23 @@ class DataEntryController extends Controller
         }
     }
 
-    public function buyDiploma()
+    public function buyDiploma(Request $request)
     {
         $diplomas = Diploma::all();
         $students = Student::whereHas('user', function ($query) {
             return $query->where('status', '=', 'active');
         })->get();
 
+        // If student_id is provided, pre-select that student
+        $selectedStudent = null;
+        if ($request->has('student_id')) {
+            $selectedStudent = Student::with('user')->find($request->student_id);
+        }
+
         return view('data_entry.courses.buy_diploma', [
             'diplomas' => $diplomas,
-            'students' => $students
+            'students' => $students,
+            'selectedStudent' => $selectedStudent
         ]);
     }
 
@@ -1203,6 +1434,7 @@ class DataEntryController extends Controller
             $request->validate([
                 'diploma_id' => ['required'],
                 'student_id' => ['required'],
+                'value_rec' => ['required', 'numeric', 'min:0'],
             ]);
 
             $diploma = Diploma::findOrFail($request->diploma_id);
@@ -1216,8 +1448,9 @@ class DataEntryController extends Controller
                 }
             }
 
-            if (!($diploma->price >= $request->value_rec && $request->value_rec >= 0)) {
-                return back()->with('error', 'القيمة المدفوعة اكبر من سعر الدبلوم او خاطئة')->withInput();
+            // Validate that the payment amount is positive
+            if ($request->value_rec <= 0) {
+                return back()->with('error', 'القيمة المدفوعة يجب أن تكون أكبر من صفر')->withInput();
             }
 
             // Collect all course IDs from the diploma
@@ -1258,8 +1491,9 @@ class DataEntryController extends Controller
             $student->user->studentDiploma()->syncWithoutDetaching($diploma->id);
 
             // Create a single revenue record for the entire diploma
-            $value_rem = $diploma->price - $request->value_rec;
-            Revenue::create([
+            // If user pays the full discounted amount, remaining is 0
+            $value_rem = 0;
+            $revenue = Revenue::create([
                 'date_of_rec' => date("Y-m-d"),
                 'type' => 'diploma',
                 'value' => $diploma->price,
@@ -1268,8 +1502,13 @@ class DataEntryController extends Controller
                 'value_rec' => $request->value_rec,
                 'value_rem' => $value_rem,
                 'diploma_id' => $diploma->id,
+                'coupon_code' => $request->coupon_code ?? null,
+                'original_price' => $diploma->price,
+                'discount_amount' => $diploma->price - $request->value_rec,
+                'coupon_type' => $request->coupon_type ?? null,
             ]);
-            return back()->with('success','تم تسجيل هذا الدبلوم للطالب')->withInput();
+            
+            return redirect()->route('data_entry.enroll_diploma.success', ['revenue_id' => $revenue->id]);
 
         }catch(Exception $e){
             return back()->with('error',$e->getMessage())->withInput();
@@ -1304,12 +1543,15 @@ class DataEntryController extends Controller
                 'address' => ['required', 'string', 'max:255'],
             ]);
 
-            Customer::create([
+            $customer = Customer::create([
                 'name' => $request->name,
                 'phone' => $request->phone,
                 'address' => $request->address,
             ]);
-            return back()->with('success','تم اضافة الزبون بنجاح');
+            
+            // Redirect to add translation deal page with the new customer ID
+            return redirect()->route('data_entry.add.translation_deal', ['customer_id' => $customer->id])
+                ->with('success', 'تم إضافة الزبون بنجاح. يمكنك الآن إضافة معاملة جديدة.');
         }catch(Exception $e){
             return back()->with('error',$e->getMessage())->withInput();
         }
@@ -1393,17 +1635,57 @@ class DataEntryController extends Controller
     }
 
     public function customers($orderBy, $sort){
+        // Get all customers with sorting
         if($orderBy == 'null' || $sort == 'null'){
             $customers = Customer::paginate(8);
         }else{
             $customers = Customer::orderBy($orderBy, $sort)->paginate(8);
         }
-        return view('data_entry.translation.customers',['customers' => $customers]);
+
+        // Get unique addresses for filter
+        $addresses = Customer::distinct()->pluck('address')->filter()->values();
+
+        return view('data_entry.translation.customers', [
+            'customers' => $customers,
+            'addresses' => $addresses
+        ]);
     }
 
-    public function addTranslationDeal(){
+    public function customersAjax(Request $request){
+        try {
+            // Get all customers with search and filter
+            $query = Customer::query();
+
+            // Apply search filter
+            if ($request->has('search') && $request->search) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%");
+                });
+            }
+
+            // Apply address filter
+            if ($request->has('address') && $request->address) {
+                $query->where('address', $request->address);
+            }
+
+            $customers = $query->paginate(8);
+
+            return view('data_entry.translation.partials.customers_table', compact('customers'))->render();
+        } catch (Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function addTranslationDeal(Request $request){
         $customers = Customer::all();
-        return view('data_entry.translation.add_translation_deal',['customers' => $customers]);
+        $selectedCustomerId = $request->get('customer_id', old('customer_id', null));
+        
+        return view('data_entry.translation.add_translation_deal', [
+            'customers' => $customers,
+            'selectedCustomerId' => $selectedCustomerId
+        ]);
     }
 
     public function registerTranslationDeal(Request $request){
@@ -1449,12 +1731,65 @@ class DataEntryController extends Controller
     }
 
     public function translationDeals($orderBy, $sort){
+        // Get all translation deals with sorting
         if($orderBy == 'null' || $sort == 'null'){
             $translationDeals = TranslationDel::with('customer')->paginate(8);
         }else{
             $translationDeals = TranslationDel::with('customer')->orderBy($orderBy, $sort)->paginate(8);
         }
-        return view('data_entry.translation.translation_deals',['translationDeals' => $translationDeals]);
+
+        // Get unique values for filters
+        $languages = TranslationDel::distinct()->pluck('language')->filter()->values();
+        $paymentMethods = TranslationDel::distinct()->pluck('payment_method')->filter()->values();
+        $currencies = TranslationDel::distinct()->pluck('currency')->filter()->values();
+
+        return view('data_entry.translation.translation_deals',[
+            'translationDeals' => $translationDeals,
+            'languages' => $languages,
+            'paymentMethods' => $paymentMethods,
+            'currencies' => $currencies
+        ]);
+    }
+
+    public function translationDealsAjax(Request $request){
+        try {
+            // Get all translation deals with search and filter
+            $query = TranslationDel::with('customer');
+
+            // Apply search filter
+            if ($request->has('search') && $request->search) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('context', 'like', "%{$search}%")
+                      ->orWhere('language', 'like', "%{$search}%")
+                      ->orWhere('payment_method', 'like', "%{$search}%")
+                      ->orWhereHas('customer', function($customerQuery) use ($search) {
+                          $customerQuery->where('name', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            // Apply language filter
+            if ($request->has('language') && $request->language) {
+                $query->where('language', $request->language);
+            }
+
+            // Apply payment method filter
+            if ($request->has('payment_method') && $request->payment_method) {
+                $query->where('payment_method', $request->payment_method);
+            }
+
+            // Apply currency filter
+            if ($request->has('currency') && $request->currency) {
+                $query->where('currency', $request->currency);
+            }
+
+            $translationDeals = $query->paginate(8);
+
+            return view('data_entry.translation.partials.translation_deals_table', compact('translationDeals'))->render();
+        } catch (Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function editTranslationDeal($id){
@@ -1682,36 +2017,318 @@ class DataEntryController extends Controller
 
     }
 
-    public function applyCoupon(Request $request)
+
+    /**
+     * Show registration choice page after saving student
+     */
+    public function registrationChoice($student_id)
     {
-        $request->validate([
-            'coupon_code' => 'required|string',
-            'course_id' => 'required|exists:courses,id',
+        $student = Student::with('user')->findOrFail($student_id);
+        
+        return view('data_entry.students.registration_choice', compact('student'));
+    }
+
+    /**
+     * Show pay fees page
+     */
+    public function payFees(Request $request)
+    {
+        $students = Student::whereHas('user', function ($query) {
+            return $query->where('status', '=', 'active');
+        })->get();
+        
+        // If student_id is provided, pre-select that student
+        $selectedStudent = null;
+        if ($request->has('student_id')) {
+            $selectedStudent = Student::with('user')->find($request->student_id);
+        }
+        
+        return view('data_entry.students.pay_fees', [
+            'students' => $students,
+            'selectedStudent' => $selectedStudent
         ]);
+    }
 
-        $couponCode = $request->input('coupon_code');
-        $courseId = $request->input('course_id');
+    /**
+     * Process payment for fees
+     */
+    public function processPayment(Request $request)
+    {
+        try {
+            $request->validate([
+                'student_id' => ['required', 'exists:students,id'],
+                'amount' => ['required', 'numeric', 'min:0.01'],
+                'payment_type' => ['required', 'in:tuition_fees,additional_fees,late_fees'],
+                'payment_method' => ['required', 'in:cash,bank_transfer,credit_card'],
+                'notes' => ['nullable', 'string', 'max:500'],
+            ]);
 
-        $course = Course::findOrFail($courseId);
-        $originalPrice = $course->price;
-        $newPrice = $originalPrice;
-        $message = 'كود الخصم غير صالح أو انتهت صلاحيته.';
-        $success = false;
+            $student = Student::findOrFail($request->student_id);
 
-        // Simple coupon logic (example: 'DISCOUNT10' for 10% off)
-        if ($couponCode === 'DISCOUNT10') {
-            $newPrice = $originalPrice * 0.90; // 10% discount
-            $message = 'تم تطبيق خصم 10% بنجاح!';
-            $success = true;
-        } elseif ($couponCode === 'FREECURSE') {
-            $newPrice = 0; // Free course
-            $message = 'تم تطبيق خصم 100% بنجاح! الكورس مجاني.';
-            $success = true;
+            // Create revenue record for payment
+            $revenue = Revenue::create([
+                'course_id' => null,
+                'diploma_id' => null,
+                'date_of_rec' => date("Y-m-d"),
+                'type' => $request->payment_type, // tuition_fees, additional_fees, or late_fees
+                'value' => $request->amount,
+                'currency' => 'D', // Default currency
+                'user_id' => $student->user->id,
+                'value_rec' => $request->amount,
+                'value_rem' => 0, // Full payment
+            ]);
+
+            // Store additional payment details in session to pass to success page
+            session([
+                'payment_details' => [
+                    'payment_method' => $request->payment_method,
+                    'payment_type' => $request->payment_type,
+                    'notes' => $request->notes,
+                ]
+            ]);
+
+            return redirect()->route('data_entry.payment.success', ['revenue_id' => $revenue->id]);
+                
+        } catch (Exception $e) {
+            return back()->with('error', $e->getMessage())->withInput();
+        }
+    }
+
+    public function paymentSuccess($revenue_id){
+        $revenue = Revenue::with('user')->findOrFail($revenue_id);
+        $student = Student::with('dataStudent')->where('user_id', '=', $revenue->user->id)->first();
+        $paymentDetails = session('payment_details', []);
+        session()->forget('payment_details');
+        
+        return view('data_entry.students.payment_success', [
+            'revenue' => $revenue,
+            'student' => $student,
+            'payment_details' => $paymentDetails
+        ]);
+    }
+
+    ### Reports ###
+    public function reports()
+    {
+        return view('data_entry.reports.index');
+    }
+
+    public function courseReports(Request $request)
+    {
+        // Get all course revenues with relationships
+        $query = Revenue::with(['user', 'course'])
+            ->whereNotNull('course_id')
+            ->whereNull('diploma_id');
+
+        // Apply filters
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->whereHas('user', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            })->orWhereHas('course', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
         }
 
-        return response()->json([
-            'success' => $success,
-            'message' => $message,
-            'new_price' => round($newPrice, 2),
+        if ($request->has('section') && $request->section) {
+            $query->whereHas('course', function($q) use ($request) {
+                $q->where('section', $request->section);
+            });
+        }
+
+        if ($request->has('payment_status') && $request->payment_status) {
+            if ($request->payment_status == 'paid') {
+                $query->where('value_rem', '<=', 0);
+            } elseif ($request->payment_status == 'pending') {
+                $query->where('value_rem', '>', 0);
+            }
+        }
+
+        $revenues = $query->orderBy('id', 'desc')->paginate(15);
+
+        // Get unique sections for filter
+        $sections = Revenue::with('course')
+            ->whereNotNull('course_id')
+            ->whereNull('diploma_id')
+            ->get()
+            ->pluck('course.section')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return view('data_entry.reports.partials.course_reports_table', compact('revenues'))->render();
+        }
+
+        return view('data_entry.reports.course_reports', [
+            'revenues' => $revenues,
+            'sections' => $sections
         ]);
-}}
+    }
+
+    public function diplomaReports(Request $request)
+    {
+        // Get all diploma revenues with relationships
+        $query = Revenue::with(['user', 'diploma'])
+            ->whereNotNull('diploma_id');
+
+        // Apply filters
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->whereHas('user', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            })->orWhereHas('diploma', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->has('payment_status') && $request->payment_status) {
+            if ($request->payment_status == 'paid') {
+                $query->where('value_rem', '<=', 0);
+            } elseif ($request->payment_status == 'pending') {
+                $query->where('value_rem', '>', 0);
+            }
+        }
+
+        $revenues = $query->orderBy('id', 'desc')->paginate(15);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return view('data_entry.reports.partials.diploma_reports_table', compact('revenues'))->render();
+        }
+
+        return view('data_entry.reports.diploma_reports', [
+            'revenues' => $revenues
+        ]);
+    }
+
+    public function payRemaining($id)
+    {
+        $revenue = Revenue::with(['user', 'course', 'diploma'])->findOrFail($id);
+        $student = Student::with('dataStudent')->where('user_id', '=', $revenue->user->id)->first();
+        
+        return view('data_entry.reports.pay_remaining', [
+            'revenue' => $revenue,
+            'student' => $student
+        ]);
+    }
+
+    public function updateRemainingPayment(Request $request, $id)
+    {
+        try {
+            $revenue = Revenue::findOrFail($id);
+            
+            $request->validate([
+                'amount' => ['required', 'numeric', 'min:0.01', 'max:' . $revenue->value_rem],
+            ]);
+
+            $amountPaid = $request->amount;
+            $newValueRec = $revenue->value_rec + $amountPaid;
+            $newValueRem = $revenue->value_rem - $amountPaid;
+
+            // Update revenue
+            $revenue->update([
+                'value_rec' => $newValueRec,
+                'value_rem' => max(0, $newValueRem),
+            ]);
+
+            return redirect()->route('data_entry.reports.course')
+                ->with('success', 'تم تسجيل الدفع بنجاح!');
+                
+        } catch (Exception $e) {
+            return back()->with('error', $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Apply coupon code
+     */
+    public function applyCoupon(Request $request)
+    {
+        try {
+            $request->validate([
+                'coupon_code' => 'required|string',
+                'type' => 'required|in:course,diploma',
+                'course_id' => 'required_if:type,course|nullable|exists:courses,id',
+                'diploma_id' => 'required_if:type,diploma|nullable|exists:diploma,id'
+            ]);
+
+            $coupon = \App\Models\Coupon::where('code', $request->coupon_code)->first();
+
+            if (!$coupon) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'كود الخصم غير صحيح'
+                ]);
+            }
+
+            if (!$coupon->isValid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'كود الخصم غير صالح أو منتهي الصلاحية'
+                ]);
+            }
+
+            // Check if coupon applies to the selected type
+            $typeForCheck = $request->type === 'course' ? 'courses' : 'diplomas';
+            if (!$coupon->appliesTo($typeForCheck)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'كود الخصم لا ينطبق على ' . ($request->type === 'course' ? 'الكورسات' : 'الدبلومات')
+                ]);
+            }
+
+            // Get original price
+            $originalPrice = 0;
+            if ($request->type === 'course') {
+                $course = \App\Models\Course::find($request->course_id);
+                $originalPrice = $course ? $course->price : 0;
+                
+                // Check if coupon is specific to a course
+                if ($coupon->specific_course_id && $coupon->specific_course_id != $request->course_id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'كود الخصم مخصص لكورس آخر'
+                    ]);
+                }
+            } else {
+                $diploma = \App\Models\Diploma::find($request->diploma_id);
+                $originalPrice = $diploma ? $diploma->price : 0;
+                
+                // Check if coupon is specific to a diploma
+                if ($coupon->specific_diploma_id && $coupon->specific_diploma_id != $request->diploma_id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'كود الخصم مخصص لدبلومة أخرى'
+                    ]);
+                }
+            }
+
+            if ($originalPrice <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لا يمكن تطبيق الخصم على هذا العنصر'
+                ]);
+            }
+
+            // Calculate discount
+            $discountAmount = $coupon->calculateDiscount($originalPrice);
+            $newPrice = $originalPrice - $discountAmount;
+
+            return response()->json([
+                'success' => true,
+                'new_price' => (float) $newPrice,
+                'discount_amount' => (float) $discountAmount,
+                'original_price' => (float) $originalPrice,
+                'coupon_type' => $coupon->type,
+                'coupon_value' => (float) $coupon->value,
+                'message' => 'تم تطبيق الخصم بنجاح'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في الخادم: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+}

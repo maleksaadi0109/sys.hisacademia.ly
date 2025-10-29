@@ -6,6 +6,15 @@
         </header>
 
         <div class="container">
+            <!-- Back Button -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <a href="{{ route('data_entry.customers', ['orderBy' => 'null', 'sort' => 'null']) }}" 
+                       class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-right me-2"></i>العودة إلى قائمة الزبائن
+                    </a>
+                </div>
+            </div>
             <div class="row">
                     <form method="POST" enctype="multipart/form-data" action="{{ route('data_entry.register.customer') }}">
                         @csrf

@@ -6,6 +6,15 @@
         </header>
 
         <div class="container">
+            <!-- Back Button -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <a href="{{ route('data_entry.translation_deals', ['orderBy' => 'null', 'sort' => 'null']) }}" 
+                       class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-right me-2"></i>العودة إلى قائمة المعاملات
+                    </a>
+                </div>
+            </div>
             <div class="row">
                     <form method="POST" enctype="multipart/form-data" action="{{ route('data_entry.register.translation_deal') }}">
                         @csrf
@@ -44,9 +53,22 @@
                                 <div class="input-group mb-3">
                                     <label class="input-group-text" for="inputGroupSelect01">الزبون</label>
                                     <select class="form-select" id="inputGroupSelect01" name="customer_id" required>
-                                        <option selected disabled>أختر....</option>
+                                        @php
+                                            // Get selected customer ID from multiple sources
+                                            $selectedCustomerId = old('customer_id') ?? $selectedCustomerId ?? request('customer_id');
+                                            
+                                            // Convert to integer for proper comparison
+                                            if($selectedCustomerId) {
+                                                $selectedCustomerId = (int) $selectedCustomerId;
+                                            }
+                                        @endphp
+                                        @if(!$selectedCustomerId)
+                                            <option selected disabled>أختر....</option>
+                                        @else
+                                            <option disabled>أختر....</option>
+                                        @endif
                                         @foreach($customers as  $value)
-                                            @if(old('customer_id') == $value->id)
+                                            @if($selectedCustomerId && $selectedCustomerId == $value->id)
                                                 <option selected value="{{$value->id}}">{{$value->name}}</option>
                                             @else
                                                 <option value="{{$value->id}}">{{$value->name}}</option>
@@ -62,6 +84,12 @@
                                                 <li>{{ $message }}</li>
                                             @endforeach
                                         </ul>
+                                    @endif
+                                    @if(isset($selectedCustomerId) && $selectedCustomerId)
+                                        <div class="alert alert-info mt-2">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            تم تحديد الزبون الجديد تلقائياً
+                                        </div>
                                     @endif
                                 </div>
                             </div>
